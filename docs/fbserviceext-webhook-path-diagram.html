@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FBServiceExt Webhook Path</title>
+  <style>
+    @page { size: A4 landscape; margin: 10mm; }
+    body {
+      margin: 0;
+      font-family: Consolas, "Courier New", monospace;
+      background: #0d1117;
+      color: #e6edf3;
+    }
+    .page {
+      width: 1560px;
+      margin: 0 auto;
+      padding: 24px 28px 18px;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      letter-spacing: 0.02em;
+    }
+    .subtitle {
+      margin: 0 0 18px;
+      color: #9fb0c7;
+      font-size: 16px;
+    }
+    .legend {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 18px;
+      font-size: 14px;
+      color: #9fb0c7;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid #2d3b4f;
+      background: #141b24;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .ack { background: #26b38f; }
+    .bg { background: #6ea8ff; }
+    .note {
+      margin-top: 14px;
+      color: #a9b9cc;
+      font-size: 15px;
+      line-height: 1.5;
+      border-top: 1px solid #263243;
+      padding-top: 12px;
+    }
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      border: 1px solid #263243;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #121923 0%, #0f141b 100%);
+    }
+    .label {
+      font-size: 18px;
+      font-weight: 700;
+      fill: #f0f6fc;
+    }
+    .block-title {
+      font-size: 13px;
+      font-weight: 700;
+      fill: #f0f6fc;
+      text-anchor: middle;
+    }
+    .block-text {
+      font-size: 11px;
+      fill: #d3deea;
+      text-anchor: middle;
+    }
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      fill: #f8fbff;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>FBServiceExt Webhook Path</h1>
+    <p class="subtitle">Horizontal path showing what blocks the HTTP 200 OK and what continues only after the response is returned.</p>
+
+    <div class="legend">
+      <span class="tag"><span class="dot ack"></span>ACK Path: directly affects webhook response latency</span>
+      <span class="tag"><span class="dot bg"></span>Background Path: continues after the response is returned</span>
+    </div>
+
+    <svg viewBox="0 0 1520 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FBServiceExt webhook path diagram">
+      <defs>
+        <marker id="arrowAck" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#26b38f" />
+        </marker>
+        <marker id="arrowBg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6ea8ff" />
+        </marker>
+      </defs>
+
+      <rect x="20" y="30" width="1480" height="190" rx="18" fill="#10241f" stroke="#1f6a57" stroke-width="2" />
+      <text x="48" y="62" class="section-title">ACK Path</text>
+
+      <rect x="20" y="260" width="1480" height="190" rx="18" fill="#101a29" stroke="#345b8d" stroke-width="2" />
+      <text x="48" y="292" class="section-title">Background Path</text>
+
+      <g>
+        <rect x="40" y="92" width="150" height="88" rx="14" fill="#16352e" stroke="#2ec7a1" />
+        <text x="115" y="120" class="block-title">Meta POST</text>
+        <text x="115" y="142" class="block-text">/api/facebook/webhooks</text>
+
+        <rect x="225" y="92" width="150" height="88" rx="14" fill="#16352e" stroke="#2ec7a1" />
+        <text x="300" y="120" class="block-title">Controller.Receive</text>
+        <text x="300" y="142" class="block-text">entry point</text>
+
+        <rect x="410" y="92" width="150" height="88" rx="14" fill="#16352e" stroke="#2ec7a1" />
+        <text x="485" y="116" class="block-title">Read body</text>
+        <text x="485" y="138" class="block-text">ReadToEndAsync</text>
+        <text x="485" y="156" class="block-text">signature header</text>
+
+        <rect x="595" y="92" width="150" height="88" rx="14" fill="#16352e" stroke="#2ec7a1" />
+        <text x="670" y="116" class="block-title">Validate signature</text>
+        <text x="670" y="138" class="block-text">IsValid(body, header)</text>
+
+        <rect x="780" y="92" width="150" height="88" rx="14" fill="#16352e" stroke="#2ec7a1" />
+        <text x="855" y="116" class="block-title">AcceptAsync</text>
+        <text x="855" y="138" class="block-text">create envelope</text>
+        <text x="855" y="156" class="block-text">await PublishAsync</text>
+
+        <rect x="965" y="92" width="170" height="88" rx="14" fill="#16352e" stroke="#2ec7a1" />
+        <text x="1050" y="116" class="block-title">RabbitMQ publish</text>
+        <text x="1050" y="138" class="block-text">ensure connection / channel</text>
+        <text x="1050" y="156" class="block-text">BasicPublish raw queue</text>
+
+        <rect x="1170" y="92" width="150" height="88" rx="14" fill="#16352e" stroke="#2ec7a1" />
+        <text x="1245" y="116" class="block-title">AcceptAsync done</text>
+        <text x="1245" y="138" class="block-text">controller resumes</text>
+
+        <rect x="1355" y="92" width="125" height="88" rx="14" fill="#16352e" stroke="#2ec7a1" />
+        <text x="1418" y="120" class="block-title">return Ok()</text>
+        <text x="1418" y="142" class="block-text">HTTP 200</text>
+      </g>
+
+      <g stroke="#26b38f" stroke-width="4" fill="none" marker-end="url(#arrowAck)">
+        <path d="M190 136 H225" />
+        <path d="M375 136 H410" />
+        <path d="M560 136 H595" />
+        <path d="M745 136 H780" />
+        <path d="M930 136 H965" />
+        <path d="M1135 136 H1170" />
+        <path d="M1320 136 H1355" />
+      </g>
+
+      <g>
+        <rect x="70" y="322" width="180" height="88" rx="14" fill="#16263c" stroke="#6ea8ff" />
+        <text x="160" y="348" class="block-title">RawIngressNormalizerWorker</text>
+        <text x="160" y="370" class="block-text">Receive raw envelope</text>
+
+        <rect x="295" y="322" width="160" height="88" rx="14" fill="#16263c" stroke="#6ea8ff" />
+        <text x="375" y="348" class="block-title">Normalize</text>
+        <text x="375" y="370" class="block-text">entry[] / messaging[]</text>
+        <text x="375" y="388" class="block-text">to normalized events</text>
+
+        <rect x="500" y="322" width="185" height="88" rx="14" fill="#16263c" stroke="#6ea8ff" />
+        <text x="592" y="348" class="block-title">Publish normalized queue</text>
+        <text x="592" y="370" class="block-text">one item per event</text>
+
+        <rect x="730" y="322" width="195" height="88" rx="14" fill="#16263c" stroke="#6ea8ff" />
+        <text x="827" y="348" class="block-title">NormalizedEventProcessorWorker</text>
+        <text x="827" y="370" class="block-text">Receive normalized event</text>
+
+        <rect x="970" y="322" width="170" height="88" rx="14" fill="#16263c" stroke="#6ea8ff" />
+        <text x="1055" y="348" class="block-title">ProcessAsync</text>
+        <text x="1055" y="370" class="block-text">GET_STARTED / postback</text>
+        <text x="1055" y="388" class="block-text">branching logic</text>
+
+        <rect x="1185" y="322" width="250" height="88" rx="14" fill="#16263c" stroke="#6ea8ff" />
+        <text x="1310" y="348" class="block-title">Redis / SQL business logic</text>
+        <text x="1310" y="370" class="block-text">state machine, dedupe, cooldown, votes</text>
+      </g>
+
+      <g stroke="#6ea8ff" stroke-width="4" fill="none" marker-end="url(#arrowBg)">
+        <path d="M250 366 H295" />
+        <path d="M455 366 H500" />
+        <path d="M685 366 H730" />
+        <path d="M925 366 H970" />
+        <path d="M1140 366 H1185" />
+      </g>
+
+      <path d="M1418 180 V228 H160 V322" stroke="#8fbfff" stroke-width="3" fill="none" stroke-dasharray="10 8" marker-end="url(#arrowBg)" />
+      <text x="1180" y="215" class="block-text" fill="#9fc9ff">only after HTTP 200 is returned</text>
+    </svg>
+
+    <div class="note">
+      <strong>Key point:</strong> everything inside <strong>ACK Path</strong> directly affects the webhook response time.
+      Everything inside <strong>Background Path</strong> happens only after the request has already received <strong>200 OK</strong>.
+    </div>
+  </div>
+</body>
+</html>

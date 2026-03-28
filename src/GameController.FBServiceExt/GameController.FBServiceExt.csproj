@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\GameController.FBServiceExt.Application\GameController.FBServiceExt.Application.csproj" SkipGetTargetFrameworkProperties="true" />
+    <ProjectReference Include="..\GameController.FBServiceExt.Infrastructure\GameController.FBServiceExt.Infrastructure.csproj" SkipGetTargetFrameworkProperties="true" />
+    <PackageReference Include="Serilog.AspNetCore" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
+    <UserSecretsId>GameController-FBServiceExt-Api</UserSecretsId>
+  </PropertyGroup>
+
+</Project>
+

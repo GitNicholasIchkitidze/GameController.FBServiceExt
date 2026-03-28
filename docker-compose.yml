@@ -1,0 +1,106 @@
+name: gamecontroller-fbserviceext-dev
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: fbserviceext-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-fbserviceext}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-ChangeMe_RabbitMq123!}
+    ports:
+      - "${RABBITMQ_AMQP_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+    networks:
+      - fbserviceext-dev
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: fbserviceext-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - fbserviceext-dev
+
+  mongodb:
+    image: mongo:7.0
+    container_name: fbserviceext-graylog-mongo
+    restart: unless-stopped
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - fbserviceext-dev
+
+  opensearch:
+    image: opensearchproject/opensearch:2.13.0
+    container_name: fbserviceext-graylog-opensearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: "true"
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-VioletRiver!2026}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    networks:
+      - fbserviceext-dev
+
+  graylog:
+    image: graylog/graylog:5.2
+    container_name: fbserviceext-graylog
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_started
+      opensearch:
+        condition: service_started
+    environment:
+      GRAYLOG_PASSWORD_SECRET: ${GRAYLOG_PASSWORD_SECRET:-ChangeThisGraylogSecretAtLeast16Chars}
+      GRAYLOG_ROOT_PASSWORD_SHA2: ${GRAYLOG_ROOT_PASSWORD_SHA2:-a5842fe7a404558fd08b82a689a7185203fbd1d060b7606962b1fda2ce702b24}
+      GRAYLOG_HTTP_BIND_ADDRESS: 0.0.0.0:9000
+      GRAYLOG_HTTP_EXTERNAL_URI: ${GRAYLOG_HTTP_EXTERNAL_URI:-http://127.0.0.1:9000/}
+      GRAYLOG_MONGODB_URI: mongodb://mongodb:27017/graylog
+      GRAYLOG_ELASTICSEARCH_HOSTS: http://opensearch:9200
+    ports:
+      - "${GRAYLOG_WEB_PORT:-9000}:9000"
+      - "${GRAYLOG_GELF_UDP_PORT:-12201}:12201/udp"
+    volumes:
+      - graylog-data:/usr/share/graylog/data/journal
+    networks:
+      - fbserviceext-dev
+
+volumes:
+  rabbitmq-data:
+  redis-data:
+  mongodb-data:
+  opensearch-data:
+  graylog-data:
+
+networks:
+  fbserviceext-dev:
+    driver: bridge
+

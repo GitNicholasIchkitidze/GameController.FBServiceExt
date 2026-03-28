@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FBServiceExt Metrics</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: rgba(16, 24, 37, 0.92);
+      --panel-2: #172234;
+      --line: #2a3b57;
+      --text: #e6edf7;
+      --muted: #97a6bc;
+      --accent: #58d3aa;
+      --warn: #ffbf69;
+      --danger: #ff7373;
+      --info: #7cc8ff;
+      --steady: #9fb4d1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top left, #15213a 0, var(--bg) 42%);
+      color: var(--text);
+      font-family: Consolas, "Courier New", monospace;
+    }
+    .shell { max-width: 1560px; margin: 0 auto; padding: 24px; }
+    .hero, .summary-grid, .queue-grid, .instances-grid {
+      display: grid;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .hero { grid-template-columns: 1.3fr .7fr; }
+    .summary-grid { grid-template-columns: repeat(3, 1fr); }
+    .queue-grid { grid-template-columns: repeat(2, 1fr); }
+    .instances-grid { grid-template-columns: repeat(2, 1fr); }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 16px 32px rgba(0,0,0,.2);
+      backdrop-filter: blur(10px);
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 30px; margin-bottom: 10px; }
+    h2 { font-size: 18px; margin-bottom: 14px; }
+    .sub { color: var(--muted); line-height: 1.6; }
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr 180px 140px;
+      gap: 12px;
+      align-items: end;
+      margin-top: 18px;
+    }
+    .field { display: grid; gap: 6px; }
+    .field label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    select, button {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      font: inherit;
+    }
+    button {
+      cursor: pointer;
+      background: linear-gradient(135deg, #1b7f6b, #155b71);
+      border: none;
+    }
+    button.secondary {
+      background: #243041;
+      border: 1px solid var(--line);
+    }
+    .meta { display: grid; gap: 10px; }
+    .meta-row { display: flex; justify-content: space-between; gap: 12px; }
+    .meta-label { color: var(--muted); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #12291f;
+      color: var(--accent);
+      border: 1px solid #1b4c3e;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .stat {
+      background: rgba(23,34,52,.75);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 14px;
+      padding: 12px;
+      min-height: 92px;
+    }
+    .stat-label { color: var(--muted); font-size: 12px; margin-bottom: 8px; text-transform: uppercase; }
+    .stat-value { font-size: 24px; font-weight: 700; }
+    .stat-note { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+    .warn { color: var(--warn); }
+    .danger { color: var(--danger); }
+    .info { color: var(--info); }
+    .steady { color: var(--steady); }
+    .hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: help;
+      text-decoration: underline dotted rgba(151,166,188,.5);
+      text-underline-offset: 3px;
+    }
+    .hint-dot {
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      border: 1px solid rgba(151,166,188,.35);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .status-pill::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .status-pill.steady {
+      color: var(--steady);
+      background: rgba(159,180,209,.12);
+      border-color: rgba(159,180,209,.25);
+    }
+    .status-pill.info {
+      color: var(--info);
+      background: rgba(124,200,255,.12);
+      border-color: rgba(124,200,255,.25);
+    }
+    .status-pill.warn {
+      color: var(--warn);
+      background: rgba(255,191,105,.12);
+      border-color: rgba(255,191,105,.25);
+    }
+    .status-pill.danger {
+      color: var(--danger);
+      background: rgba(255,115,115,.12);
+      border-color: rgba(255,115,115,.25);
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+    td { vertical-align: top; }
+    .instance-card {
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 14px;
+      padding: 14px;
+      background: rgba(15, 22, 33, .8);
+      margin-bottom: 12px;
+    }
+    .instance-title { font-size: 15px; margin-bottom: 8px; }
+    .muted { color: var(--muted); }
+    .empty { color: var(--muted); padding: 16px 0; }
+    @media (max-width: 1200px) {
+      .hero, .summary-grid, .queue-grid, .instances-grid, .toolbar, .stat-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="card">
+        <h1>FBServiceExt Metrics</h1>
+        <p class="sub" title="?? ???? ???????? realtime ????, ??????? webhook ACK ??????????, worker throughput-? ?? RabbitMQ queue pressure-? ?????????. ????????? K6 ???????? ????, ???? ????? bottleneck ??????? ???????.">Local realtime dashboard for webhook ACK, worker throughput, and RabbitMQ queue pressure. Use this during K6 runs to see where the system is actually saturating.</p>
+        <div class="toolbar">
+          <div class="field">
+            <label for="refreshSelect" title="?????? ????? ?????? ????????? dashboard-?? snapshot.">Refresh</label>
+            <select id="refreshSelect" title="?????? ????? ?????? ????????? dashboard-?? snapshot.">
+              <option value="1000">1 sec</option>
+              <option value="2000" selected>2 sec</option>
+              <option value="5000">5 sec</option>
+              <option value="10000">10 sec</option>
+            </select>
+          </div>
+          <button id="refreshButton" title="?????? ???????? metrics snapshot.">Refresh</button>
+          <button id="pauseButton" class="secondary" title="??????? ?? ????????? ?????????? refresh.">Pause</button>
+        </div>
+      </div>
+      <div class="card meta">
+        <div class="meta-row"><span class="meta-label" title="????? ????????? ???????????: backend metrics endpoint ??????? ?? ???.">Status</span><span class="badge"><span class="dot"></span><span id="statusText">Ready</span></span></div>
+        <div class="meta-row"><span class="meta-label" title="?? snapshot ????? ???????.">Generated</span><span id="generatedAt">-</span></div>
+        <div class="meta-row"><span class="meta-label" title="UI ????? ????? ????????.">Last refresh</span><span id="lastRefresh">-</span></div>
+        <div class="meta-row"><span class="meta-label" title="??????? API instance ???????? runtime metrics snapshot-?.">API instances</span><span id="apiInstanceCount">0</span></div>
+        <div class="meta-row"><span class="meta-label" title="??????? Worker instance ???????? runtime metrics snapshot-?.">Worker instances</span><span id="workerInstanceCount">0</span></div>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <div class="card">
+        <h2 title="API ingress-?? ????????????: ??????? request ?????? ?? ???????? ??????? ???????? 200 OK.">API ACK</h2>
+        <div class="stat-grid" id="apiSummary"></div>
+      </div>
+      <div class="card">
+        <h2 title="Raw worker-?? ????????????: ??????? raw webhook envelope ???? queue-??? ?? ?????? event-?? ??????.">Worker Raw</h2>
+        <div class="stat-grid" id="rawSummary"></div>
+      </div>
+      <div class="card">
+        <h2 title="Business processor-?? ????????????: ??????? normalized event ????????? ?? ??????? state transition ????????.">Worker Processor</h2>
+        <div class="stat-grid" id="processorSummary"></div>
+      </div>
+    </section>
+
+    <section class="queue-grid">
+      <div class="card">
+        <h2 title="RabbitMQ queue pressure-?? ?????? ??????: backlog, in-flight messages ?? drain-?? ?????.">Queue Health</h2>
+        <div class="stat-grid" id="queueSummary"></div>
+      </div>
+      <div class="card">
+        <h2 title="RabbitMQ queue-???? ????????? snapshot. ?? queue-by-queue ???? ??? ???????? ?????.">Queues</h2>
+        <table>
+          <thead>
+            <tr>
+              <th title="RabbitMQ queue-?? ??????.">Queue</th>
+              <th title="Queue-?? ????????? ???????????: Stable, Transient, Draining ?? Critical.">Status</th>
+              <th title="??????? consumer ?????? ?? queue-?.">Consumers</th>
+              <th title="??????? message ???? queue-?? ?? ??? consumer-? ?? ?????.">Ready</th>
+              <th title="??????? message ???? consumer-? ???? ???????, ?????? ack ??? ?? ???????????.">Unacked</th>
+              <th title="??????? message ?????????? ????? ?? queue-??.">Publish/s</th>
+              <th title="??????? message ack-???? ????? ?? queue-???.">Ack/s</th>
+            </tr>
+          </thead>
+          <tbody id="queueRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="instances-grid">
+      <div class="card">
+        <h2 title="?????????? API instance-???? runtime snapshot.">API Instances</h2>
+        <div id="apiInstances"></div>
+      </div>
+      <div class="card">
+        <h2 title="?????????? Worker instance-???? runtime snapshot.">Worker Instances</h2>
+        <div id="workerInstances"></div>
+      </div>
+    </section>
+  </div>
+  <script src="/dev-metrics/app.js"></script>
+</body>
+</html>

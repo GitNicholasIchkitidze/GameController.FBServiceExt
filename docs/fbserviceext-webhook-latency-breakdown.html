@@ -1,0 +1,183 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FBServiceExt Webhook Latency Breakdown</title>
+  <style>
+    @page { size: A4 landscape; margin: 10mm; }
+    body {
+      margin: 0;
+      font-family: Consolas, "Courier New", monospace;
+      background: #0d1117;
+      color: #e6edf3;
+    }
+    .page {
+      width: 1560px;
+      margin: 0 auto;
+      padding: 28px;
+      box-sizing: border-box;
+    }
+    h1 { margin: 0 0 8px; font-size: 30px; }
+    .subtitle { margin: 0 0 18px; color: #9fb0c7; font-size: 16px; }
+    .legend { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+    .tag {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid #2b3647;
+      background: #141b24;
+      color: #c9d5e3;
+      font-size: 14px;
+    }
+    .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+    .green { background: #2ec7a1; }
+    .amber { background: #ffb454; }
+    .red { background: #ff6b6b; }
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 22px;
+      border: 1px solid #263243;
+      background: linear-gradient(180deg, #121923 0%, #0f141b 100%);
+      box-shadow: 0 20px 40px rgba(0,0,0,.18);
+    }
+    .notes {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .note {
+      border: 1px solid #263243;
+      border-radius: 18px;
+      padding: 14px 16px;
+      background: #121923;
+      color: #d4dfeb;
+      line-height: 1.55;
+      font-size: 14px;
+    }
+    .note strong { color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>FBServiceExt Webhook ACK Latency Breakdown</h1>
+    <p class="subtitle">Horizontal view of the awaited path before <strong>200 OK</strong>. Each block now includes the primary source file and line range so the performance discussion maps directly back to code.</p>
+
+    <div class="legend">
+      <span class="tag"><span class="dot green"></span>Low risk / usually cheap</span>
+      <span class="tag"><span class="dot amber"></span>Medium risk / environment dependent</span>
+      <span class="tag"><span class="dot red"></span>High risk / can dominate p95-p99</span>
+    </div>
+
+    <svg viewBox="0 0 1520 840" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Webhook ACK latency breakdown diagram with code references">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#7cc7ff" />
+        </marker>
+      </defs>
+
+      <text x="48" y="56" font-size="24" font-weight="700" fill="#f8fbff">ACK Path (everything below happens before HTTP 200)</text>
+      <rect x="24" y="80" width="1470" height="360" rx="24" fill="#101821" stroke="#2b3647" />
+
+      <g>
+        <rect x="42" y="132" width="215" height="245" rx="18" fill="#143127" stroke="#2ec7a1" stroke-width="2" />
+        <text x="149.5" y="164" text-anchor="middle" font-size="18" font-weight="700" fill="#f8fbff">1. Body Read</text>
+        <text x="149.5" y="191" text-anchor="middle" font-size="12" fill="#d9e3ee">Request.Body -> string</text>
+        <text x="149.5" y="219" text-anchor="middle" font-size="12" fill="#2ec7a1">Latency Risk: LOW</text>
+        <text x="149.5" y="244" text-anchor="middle" font-size="11" fill="#d9e3ee">Mostly payload-size bound</text>
+        <text x="149.5" y="262" text-anchor="middle" font-size="11" fill="#d9e3ee">Current payloads are small</text>
+        <text x="149.5" y="280" text-anchor="middle" font-size="11" fill="#d9e3ee">Usually cheap unless body</text>
+        <text x="149.5" y="296" text-anchor="middle" font-size="11" fill="#d9e3ee">gets large or request stalls</text>
+        <text x="149.5" y="326" text-anchor="middle" font-size="10" font-weight="700" fill="#f8fbff">Code Ref</text>
+        <text x="149.5" y="345" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Controllers/FacebookWebhooksController.cs</text>
+        <text x="149.5" y="361" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Receive(): L74-L76</text>
+      </g>
+
+      <g>
+        <rect x="281" y="132" width="215" height="245" rx="18" fill="#143127" stroke="#2ec7a1" stroke-width="2" />
+        <text x="388.5" y="164" text-anchor="middle" font-size="18" font-weight="700" fill="#f8fbff">2. Signature Check</text>
+        <text x="388.5" y="191" text-anchor="middle" font-size="12" fill="#d9e3ee">X-Hub-Signature-256</text>
+        <text x="388.5" y="219" text-anchor="middle" font-size="12" fill="#2ec7a1">Latency Risk: LOW</text>
+        <text x="388.5" y="244" text-anchor="middle" font-size="11" fill="#d9e3ee">Pure CPU work</text>
+        <text x="388.5" y="262" text-anchor="middle" font-size="11" fill="#d9e3ee">No external I/O</text>
+        <text x="388.5" y="280" text-anchor="middle" font-size="11" fill="#d9e3ee">Should stay stable under load</text>
+        <text x="388.5" y="326" text-anchor="middle" font-size="10" font-weight="700" fill="#f8fbff">Code Ref</text>
+        <text x="388.5" y="345" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Controllers/FacebookWebhooksController.cs</text>
+        <text x="388.5" y="361" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Receive(): L78-L89</text>
+      </g>
+
+      <g>
+        <rect x="520" y="132" width="215" height="245" rx="18" fill="#143127" stroke="#2ec7a1" stroke-width="2" />
+        <text x="627.5" y="164" text-anchor="middle" font-size="18" font-weight="700" fill="#f8fbff">3. Envelope Create</text>
+        <text x="627.5" y="191" text-anchor="middle" font-size="12" fill="#d9e3ee">AcceptWebhookCommand -></text>
+        <text x="627.5" y="207" text-anchor="middle" font-size="12" fill="#d9e3ee">RawWebhookEnvelope</text>
+        <text x="627.5" y="235" text-anchor="middle" font-size="12" fill="#2ec7a1">Latency Risk: LOW</text>
+        <text x="627.5" y="260" text-anchor="middle" font-size="11" fill="#d9e3ee">Object allocation only</text>
+        <text x="627.5" y="278" text-anchor="middle" font-size="11" fill="#d9e3ee">Negligible compared to I/O</text>
+        <text x="627.5" y="326" text-anchor="middle" font-size="10" font-weight="700" fill="#f8fbff">Code Ref</text>
+        <text x="627.5" y="345" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Application/Services/WebhookIngressService.cs</text>
+        <text x="627.5" y="361" text-anchor="middle" font-size="9.5" fill="#d9e3ee">AcceptAsync(): L32-L39</text>
+      </g>
+
+      <g>
+        <rect x="759" y="114" width="350" height="281" rx="18" fill="#352714" stroke="#ffb454" stroke-width="2" />
+        <text x="934" y="148" text-anchor="middle" font-size="20" font-weight="700" fill="#f8fbff">4. RabbitMQ Publish</text>
+        <text x="934" y="176" text-anchor="middle" font-size="12" fill="#f3dfc2">Ensure connection/channel + BasicPublish</text>
+        <text x="934" y="206" text-anchor="middle" font-size="13" fill="#ffb454">Latency Risk: MEDIUM to HIGH</text>
+        <text x="934" y="232" text-anchor="middle" font-size="11" fill="#f3dfc2">Dominant ACK-path risk in normal operation</text>
+        <text x="934" y="250" text-anchor="middle" font-size="11" fill="#f3dfc2">Sensitive to broker/network/warm-up/backpressure</text>
+        <text x="934" y="268" text-anchor="middle" font-size="11" fill="#f3dfc2">Earlier cold-start spikes came from this area</text>
+        <text x="934" y="286" text-anchor="middle" font-size="11" fill="#f3dfc2">Warm-up reduced first-hit cost</text>
+        <text x="934" y="322" text-anchor="middle" font-size="10" font-weight="700" fill="#f8fbff">Primary Code Ref</text>
+        <text x="934" y="341" text-anchor="middle" font-size="9.5" fill="#f3dfc2">Infrastructure/Messaging/RabbitMqRawIngressPublisher.cs</text>
+        <text x="934" y="357" text-anchor="middle" font-size="9.5" fill="#f3dfc2">PublishAsync(): L29-L55</text>
+        <text x="934" y="376" text-anchor="middle" font-size="9.5" fill="#f3dfc2">EnsureChannelAsync(): L99-L119</text>
+      </g>
+
+      <g>
+        <rect x="1133" y="132" width="175" height="245" rx="18" fill="#143127" stroke="#2ec7a1" stroke-width="2" />
+        <text x="1220.5" y="166" text-anchor="middle" font-size="18" font-weight="700" fill="#f8fbff">5. return Ok()</text>
+        <text x="1220.5" y="193" text-anchor="middle" font-size="12" fill="#d9e3ee">HTTP 200 returned</text>
+        <text x="1220.5" y="221" text-anchor="middle" font-size="12" fill="#2ec7a1">Latency Risk: NONE</text>
+        <text x="1220.5" y="246" text-anchor="middle" font-size="11" fill="#d9e3ee">But only after all awaited</text>
+        <text x="1220.5" y="262" text-anchor="middle" font-size="11" fill="#d9e3ee">steps above have finished</text>
+        <text x="1220.5" y="326" text-anchor="middle" font-size="10" font-weight="700" fill="#f8fbff">Code Ref</text>
+        <text x="1220.5" y="345" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Controllers/FacebookWebhooksController.cs</text>
+        <text x="1220.5" y="361" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Receive(): L114-L115</text>
+      </g>
+
+      <g stroke="#7cc7ff" stroke-width="4" fill="none" marker-end="url(#arrow)">
+        <path d="M257 254 H281" />
+        <path d="M496 254 H520" />
+        <path d="M735 254 H759" />
+        <path d="M1109 254 H1133" />
+      </g>
+
+      <rect x="48" y="474" width="1440" height="274" rx="22" fill="#101821" stroke="#2b3647" />
+      <text x="72" y="510" font-size="24" font-weight="700" fill="#f8fbff">What this means in practice</text>
+
+      <text x="88" y="554" font-size="18" font-weight="700" fill="#2ec7a1">Good</text>
+      <text x="160" y="554" font-size="16" fill="#d9e3ee">~100-300 ms ACK is healthy for this architecture.</text>
+
+      <text x="88" y="592" font-size="18" font-weight="700" fill="#ffb454">Watch</text>
+      <text x="160" y="592" font-size="16" fill="#d9e3ee">~500 ms to 1 s deserves attention, especially if p95 or p99 drifts there.</text>
+
+      <text x="88" y="630" font-size="18" font-weight="700" fill="#ff6b6b">Bad</text>
+      <text x="160" y="630" font-size="16" fill="#d9e3ee">Multi-second ACKs are dangerous because retries and duplicate deliveries become likely.</text>
+
+      <text x="88" y="670" font-size="16" fill="#d9e3ee">Current example: 127.4902 ms is in the good zone.</text>
+      <text x="88" y="694" font-size="16" fill="#d9e3ee">Primary performance focus remains step 4, because it is the only awaited network hop before 200 OK.</text>
+      <text x="88" y="718" font-size="16" fill="#d9e3ee">The next thing to monitor is not a single request, but p95 / p99 under burst load.</text>
+    </svg>
+
+    <div class="notes">
+      <div class="note"><strong>Why await matters:</strong> <code>await AcceptAsync(...); return Ok();</code> means the response is sent only after publish completes. Async is non-blocking for the thread, but it still delays the HTTP response until the awaited work finishes.</div>
+      <div class="note"><strong>How to use the refs:</strong> each box points at the primary code location responsible for that latency segment. Step 4 intentionally includes both <code>PublishAsync()</code> and <code>EnsureChannelAsync()</code> because warm-up and channel creation both affect first-hit latency.</div>
+    </div>
+  </div>
+</body>
+</html>

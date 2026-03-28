@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\GameController.FBServiceExt.Application\GameController.FBServiceExt.Application.csproj" SkipGetTargetFrameworkProperties="true" />
+    <ProjectReference Include="..\..\src\GameController.FBServiceExt.Domain\GameController.FBServiceExt.Domain.csproj" SkipGetTargetFrameworkProperties="true" />
+    <ProjectReference Include="..\..\src\GameController.FBServiceExt\GameController.FBServiceExt.csproj" SkipGetTargetFrameworkProperties="true" />
+  </ItemGroup>
+
+</Project>

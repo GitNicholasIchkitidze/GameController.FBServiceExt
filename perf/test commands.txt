@@ -1,0 +1,9 @@
+cd 'E:\GAME SHOW Project\GameShowControlSolution\GameController.FBServiceExtSolution'
+.\perf\run-performance-stress.bat
+
+cd 'E:\GAME SHOW Project\GameShowControlSolution\GameController.FBServiceExtSolution'
+.\perf\run-performance-stress.bat 500 300s 1 300 600
+
+
+cd 'E:\GAME SHOW Project\GameShowControlSolution\GameController.FBServiceExtSolution'
+.\perf\run-performance-stress.bat 500 300s 3 300 600

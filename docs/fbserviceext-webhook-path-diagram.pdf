@@ -1,0 +1,195 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 1 /Kids [3 0 R] >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 4409 >>
+stream
+0.15 w
+0.11 0.15 0.20 RG
+0.05 0.07 0.10 rg
+0 0 842 595 re f
+BT /F2 24 Tf 36 560 Td (FBServiceExt Webhook Path) Tj ET
+0.62 0.69 0.78 rg
+BT /F1 12 Tf 36 540 Td (Horizontal path showing what blocks HTTP 200 OK and what continues after the response is returned.) Tj ET
+0.12 0.42 0.34 RG
+0.06 0.14 0.12 rg
+20 340 802 165 re B
+0.20 0.36 0.55 RG
+0.06 0.10 0.16 rg
+20 120 802 165 re B
+1 1 1 rg
+BT /F2 16 Tf 36 485 Td (ACK Path) Tj ET
+BT /F2 16 Tf 36 265 Td (Background Path) Tj ET
+0.09 0.21 0.18 rg
+0.18 0.78 0.63 RG
+36 378 95 70 re B
+1 1 1 rg
+BT /F2 10 Tf 46 430 Td (Meta POST) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 46 414 Td (/api/facebook/webhooks) Tj ET
+0.09 0.21 0.18 rg
+0.18 0.78 0.63 RG
+150 378 95 70 re B
+1 1 1 rg
+BT /F2 10 Tf 160 430 Td (Controller.Receive) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 160 414 Td (entry point) Tj ET
+0.09 0.21 0.18 rg
+0.18 0.78 0.63 RG
+264 378 95 70 re B
+1 1 1 rg
+BT /F2 10 Tf 274 430 Td (Read body) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 274 414 Td (ReadToEndAsync) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 274 402 Td (signature header) Tj ET
+0.09 0.21 0.18 rg
+0.18 0.78 0.63 RG
+378 378 95 70 re B
+1 1 1 rg
+BT /F2 10 Tf 388 430 Td (Validate signature) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 388 414 Td (IsValid\\(body, header\\)) Tj ET
+0.09 0.21 0.18 rg
+0.18 0.78 0.63 RG
+492 378 110 70 re B
+1 1 1 rg
+BT /F2 10 Tf 502 430 Td (AcceptAsync) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 502 414 Td (create envelope) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 502 402 Td (await PublishAsync) Tj ET
+0.09 0.21 0.18 rg
+0.18 0.78 0.63 RG
+621 378 130 70 re B
+1 1 1 rg
+BT /F2 10 Tf 631 430 Td (RabbitMQ publish) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 631 414 Td (ensure connection/channel) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 631 402 Td (BasicPublish raw queue) Tj ET
+0.09 0.21 0.18 rg
+0.18 0.78 0.63 RG
+770 378 110 70 re B
+1 1 1 rg
+BT /F2 10 Tf 780 430 Td (AcceptAsync done) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 780 414 Td (controller resumes) Tj ET
+0.12 0.27 0.22 rg
+0.18 0.78 0.63 RG
+699 472 105 22 re B
+1 1 1 rg
+BT /F2 10 Tf 709 476 Td (return Ok\\(\\)) Tj ET
+0.15 0.70 0.56 RG
+2 w
+131 413 m 150 413 l S
+245 413 m 264 413 l S
+359 413 m 378 413 l S
+473 413 m 492 413 l S
+602 413 m 621 413 l S
+751 413 m 770 413 l S
+804 483 m 770 448 l S
+150 413 m 143 417 l 143 409 l f
+264 413 m 257 417 l 257 409 l f
+378 413 m 371 417 l 371 409 l f
+492 413 m 485 417 l 485 409 l f
+621 413 m 614 417 l 614 409 l f
+770 413 m 763 417 l 763 409 l f
+770 448 m 762 450 l 768 442 l f
+0.09 0.15 0.24 rg
+0.43 0.66 1.00 RG
+55 155 130 70 re B
+1 1 1 rg
+BT /F2 10 Tf 65 207 Td (RawIngressNormalizerWorker) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 65 191 Td (Receive raw envelope) Tj ET
+0.09 0.15 0.24 rg
+0.43 0.66 1.00 RG
+215 155 110 70 re B
+1 1 1 rg
+BT /F2 10 Tf 225 207 Td (Normalize) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 225 191 Td (entry[] / messaging[]) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 225 179 Td (to events) Tj ET
+0.09 0.15 0.24 rg
+0.43 0.66 1.00 RG
+355 155 130 70 re B
+1 1 1 rg
+BT /F2 10 Tf 365 207 Td (Publish normalized queue) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 365 191 Td (one item per event) Tj ET
+0.09 0.15 0.24 rg
+0.43 0.66 1.00 RG
+515 155 145 70 re B
+1 1 1 rg
+BT /F2 10 Tf 525 207 Td (NormalizedEventProcessorWorker) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 525 191 Td (Receive normalized event) Tj ET
+0.09 0.15 0.24 rg
+0.43 0.66 1.00 RG
+690 155 110 70 re B
+1 1 1 rg
+BT /F2 10 Tf 700 207 Td (ProcessAsync) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 700 191 Td (GET_STARTED / postback) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 700 179 Td (branching logic) Tj ET
+0.09 0.15 0.24 rg
+0.43 0.66 1.00 RG
+830 155 170 70 re B
+1 1 1 rg
+BT /F2 10 Tf 840 207 Td (Redis / SQL business logic) Tj ET
+0.86 0.90 0.95 rg
+BT /F1 8 Tf 840 191 Td (state machine, dedupe, cooldown, votes) Tj ET
+0.43 0.66 1.00 RG
+185 190 m 215 190 l S
+325 190 m 355 190 l S
+485 190 m 515 190 l S
+660 190 m 690 190 l S
+800 190 m 830 190 l S
+215 190 m 208 194 l 208 186 l f
+355 190 m 348 194 l 348 186 l f
+515 190 m 508 194 l 508 186 l f
+690 190 m 683 194 l 683 186 l f
+830 190 m 823 194 l 823 186 l f
+1.5 w
+[6 4] 0 d
+0.62 0.79 1.00 RG
+751 378 m 751 250 l 120 250 l 120 225 l S
+120 225 m 113 229 l 113 221 l f
+[] 0 d
+0.70 0.82 1.00 rg
+BT /F1 10 Tf 560 256 Td (only after HTTP 200 is returned) Tj ET
+0.85 0.90 0.96 rg
+BT /F2 12 Tf 36 72 Td (Key point:) Tj ET
+BT /F1 11 Tf 100 72 Td (everything in ACK Path directly affects webhook response latency; Background Path starts only after 200 OK.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000004712 00000 n 
+0000004782 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+4857
+%%EOF

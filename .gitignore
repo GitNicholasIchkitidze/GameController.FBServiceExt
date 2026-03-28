@@ -1,0 +1,17 @@
+﻿.env
+.vs/
+.appdata/
+.localappdata/
+.dotnet/
+.dotnet-cli/
+artifacts/
+src/**/bin/
+src/**/obj/
+tests/**/bin/
+tests/**/obj/
+*.user
+*.suo
+*.out.txt
+*.err.txt
+docs/.edge-headless-profile*/
+

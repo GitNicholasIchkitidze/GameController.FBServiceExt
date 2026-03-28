@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FBServiceExt Dev Logs</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #151b23;
+      --panel-2: #1d2633;
+      --line: #2b3647;
+      --text: #e6edf3;
+      --muted: #95a3b8;
+      --accent: #4bd3a5;
+      --warn: #ffb454;
+      --error: #ff6b6b;
+      --info: #7cc7ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Consolas, "Courier New", monospace;
+      background: radial-gradient(circle at top, #182131 0, var(--bg) 45%);
+      color: var(--text);
+    }
+    .shell {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    .card {
+      background: rgba(21, 27, 35, 0.94);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 20px 40px rgba(0,0,0,.18);
+    }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: 28px; margin-bottom: 10px; }
+    .sub { color: var(--muted); line-height: 1.5; }
+    .meta { display: grid; gap: 10px; }
+    .meta-row { display: flex; justify-content: space-between; gap: 12px; }
+    .meta-label { color: var(--muted); }
+    .toolbar {
+      display: grid;
+      grid-template-columns: 2.2fr .8fr .8fr auto auto;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+    .field-label {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    input, select, button {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+    }
+    button {
+      width: auto;
+      cursor: pointer;
+      background: linear-gradient(135deg, #1b7f6b, #155b71);
+      border: none;
+      min-width: 120px;
+    }
+    button.secondary {
+      background: #243041;
+      border: 1px solid var(--line);
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #182131;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .chip:hover { color: var(--text); border-color: #47607d; }
+    .status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 12px 0 14px;
+      color: var(--muted);
+      gap: 12px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #12291f;
+      color: var(--accent);
+      border: 1px solid #1b4c3e;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .table-wrap {
+      overflow: auto;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #0f141b;
+      min-height: 420px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+    }
+    td.timestamp {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #131a23;
+      color: var(--muted);
+      z-index: 1;
+    }
+    td.source {
+      max-width: 170px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    td.message {
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.6;
+      font-size: 15px;
+      font-weight: 600;
+      color: #f5f9ff;
+    }
+    .level {
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+    .level-info { color: var(--info); }
+    .level-warning { color: var(--warn); }
+    .level-error, .level-critical { color: var(--error); }
+    .empty, .error {
+      padding: 28px;
+      color: var(--muted);
+    }
+    .error {
+      color: var(--error);
+    }
+    @media (max-width: 1080px) {
+      .hero, .toolbar { grid-template-columns: 1fr; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="card">
+        <h1>FBServiceExt Dev Log Viewer</h1>
+        <p class="sub">Fast local viewer for API and Worker business logs. Graylog remains the backend store, but this page keeps the important flow visible with quick filters and auto-refresh.</p>
+      </div>
+      <div class="card meta">
+        <div class="meta-row"><span class="meta-label">Default query</span><span id="currentQuery">Application:GameController.FBServiceExt</span></div>
+        <div class="meta-row"><span class="meta-label">Last refresh</span><span id="lastRefresh">-</span></div>
+        <div class="meta-row"><span class="meta-label">Entries</span><span id="entryCount">0</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="toolbar">
+        <div class="field">
+          <label class="field-label" for="queryInput">Query</label>
+          <input id="queryInput" type="text" value="Application:GameController.FBServiceExt" spellcheck="false">
+        </div>
+        <div class="field">
+          <label class="field-label" for="limitSelect">Rows</label>
+          <select id="limitSelect" title="Maximum rows to load from Graylog">
+            <option value="50">50 rows</option>
+            <option value="100">100 rows</option>
+            <option value="150">150 rows</option>
+            <option value="200" selected>200 rows</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="refreshSelect">Refresh</label>
+          <select id="refreshSelect">
+            <option value="0">Manual</option>
+            <option value="2000">2 sec</option>
+            <option value="5000">5 sec</option>
+            <option value="10000">10 sec</option>
+          </select>
+        </div>
+        <button id="refreshButton">Refresh</button>
+        <button id="pauseButton" class="secondary">Pause</button>
+      </div>
+
+      <div class="chips">
+        <div class="chip" data-query="Application:GameController.FBServiceExt">All</div>
+        <div class="chip" data-query="Application:GameController.FBServiceExt AND ServiceRole:Api">API</div>
+        <div class="chip" data-query="Application:GameController.FBServiceExt AND ServiceRole:Worker">Worker</div>
+        <div class="chip" data-query="\"Processing Messenger event\"">Processing</div>
+        <div class="chip" data-query="\"Vote session created and moved to OptionsSent\"">OptionsSent</div>
+        <div class="chip" data-query="\"HTTP POST /api/facebook/webhooks\" OR \"Webhook request accepted\"">Webhook</div>
+      </div>
+
+      <div class="status">
+        <span class="badge"><span class="dot"></span><span id="statusText">Ready</span></span>
+        <span id="errorText"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 130px;">Timestamp</th>
+              <th style="width: 80px;">Role</th>
+              <th style="width: 90px;">Level</th>
+              <th style="width: 170px;">Source</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <script src="/dev-logs/app.js"></script>
+</body>
+</html>

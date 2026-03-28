@@ -1,0 +1,488 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1520 840] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 7199 >>
+stream
+0.051 0.067 0.09 rg
+0.051 0.067 0.09 RG
+0 w
+0 0 1520 840 re B
+BT
+/F2 30 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 36 798 Tm
+(FBServiceExt Webhook ACK Latency Breakdown) Tj
+ET
+BT
+/F1 15 Tf
+0.624 0.69 0.78 rg
+1 0 0 1 36 772 Tm
+(Horizontal view of the awaited path before 200 OK. Each block includes the primary source file and line range.) Tj
+ET
+0.078 0.106 0.141 rg
+0.169 0.212 0.278 RG
+1.2 w
+36 726 208 30 re B
+BT
+/F1 13 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 48 736 Tm
+(Low risk / usually cheap) Tj
+ET
+0.180 0.780 0.631 rg 36 736 8 8 re f
+0.078 0.106 0.141 rg
+0.169 0.212 0.278 RG
+1.2 w
+258 726 254 30 re B
+BT
+/F1 13 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 270 736 Tm
+(Medium risk / environment dependent) Tj
+ET
+1.000 0.706 0.329 rg 258 736 8 8 re f
+0.078 0.106 0.141 rg
+0.169 0.212 0.278 RG
+1.2 w
+526 726 240 30 re B
+BT
+/F1 13 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 538 736 Tm
+(High risk / can dominate p95-p99) Tj
+ET
+1.000 0.420 0.420 rg 526 736 8 8 re f
+BT
+/F2 23 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 48 684 Tm
+(ACK Path \(everything below happens before HTTP 200\)) Tj
+ET
+0.063 0.094 0.129 rg
+0.169 0.212 0.278 RG
+1.2 w
+24 392 1470 276 re B
+0.078 0.192 0.153 rg
+0.18 0.78 0.631 RG
+2 w
+42 444 215 190 re B
+BT
+/F2 18 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 56 606 Tm
+(1. Body Read) Tj
+ET
+BT
+/F1 11.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 56 582 Tm
+(Request.Body -> string) Tj
+ET
+BT
+/F2 12 Tf
+0.18 0.78 0.631 rg
+1 0 0 1 56 558 Tm
+(Latency Risk: LOW) Tj
+ET
+BT
+/F1 10.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 56 534 Tm
+(Mostly payload-size bound) Tj
+ET
+BT
+/F1 10.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 56 516 Tm
+(Current payloads are small) Tj
+ET
+BT
+/F1 10.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 56 498 Tm
+(Usually cheap unless body stalls) Tj
+ET
+BT
+/F2 10 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 56 486 Tm
+(Code Ref) Tj
+ET
+BT
+/F1 9.2 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 56 468 Tm
+(Controllers/FacebookWebhooksController.cs) Tj
+ET
+BT
+/F1 9.2 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 56 454 Tm
+(Receive\(\): L74-L76) Tj
+ET
+0.078 0.192 0.153 rg
+0.18 0.78 0.631 RG
+2 w
+281 444 215 190 re B
+BT
+/F2 18 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 295 606 Tm
+(2. Signature Check) Tj
+ET
+BT
+/F1 11.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 295 582 Tm
+(X-Hub-Signature-256) Tj
+ET
+BT
+/F2 12 Tf
+0.18 0.78 0.631 rg
+1 0 0 1 295 558 Tm
+(Latency Risk: LOW) Tj
+ET
+BT
+/F1 10.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 295 534 Tm
+(Pure CPU work) Tj
+ET
+BT
+/F1 10.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 295 516 Tm
+(No external I/O) Tj
+ET
+BT
+/F1 10.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 295 498 Tm
+(Should stay stable under load) Tj
+ET
+BT
+/F2 10 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 295 486 Tm
+(Code Ref) Tj
+ET
+BT
+/F1 9.2 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 295 468 Tm
+(Controllers/FacebookWebhooksController.cs) Tj
+ET
+BT
+/F1 9.2 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 295 454 Tm
+(Receive\(\): L78-L89) Tj
+ET
+0.078 0.192 0.153 rg
+0.18 0.78 0.631 RG
+2 w
+520 444 215 190 re B
+BT
+/F2 18 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 534 606 Tm
+(3. Envelope Create) Tj
+ET
+BT
+/F1 11.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 534 582 Tm
+(AcceptWebhookCommand ->) Tj
+ET
+BT
+/F2 12 Tf
+0.18 0.78 0.631 rg
+1 0 0 1 534 558 Tm
+(Latency Risk: LOW) Tj
+ET
+BT
+/F1 10.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 534 534 Tm
+(RawWebhookEnvelope) Tj
+ET
+BT
+/F1 10.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 534 516 Tm
+(Object allocation only) Tj
+ET
+BT
+/F1 10.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 534 498 Tm
+(Negligible compared to I/O) Tj
+ET
+BT
+/F2 10 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 534 486 Tm
+(Code Ref) Tj
+ET
+BT
+/F1 9.2 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 534 468 Tm
+(Application/Services/WebhookIngressService.cs) Tj
+ET
+BT
+/F1 9.2 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 534 454 Tm
+(AcceptAsync\(\): L32-L39) Tj
+ET
+0.208 0.153 0.078 rg
+1 0.706 0.329 RG
+2 w
+759 428 350 222 re B
+BT
+/F2 18 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 773 622 Tm
+(4. RabbitMQ Publish) Tj
+ET
+BT
+/F1 11.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 773 598 Tm
+(Ensure connection/channel + BasicPublish) Tj
+ET
+BT
+/F2 12 Tf
+1 0.706 0.329 rg
+1 0 0 1 773 574 Tm
+(Latency Risk: MEDIUM to HIGH) Tj
+ET
+BT
+/F1 10.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 773 550 Tm
+(Dominant ACK-path risk in normal operation) Tj
+ET
+BT
+/F1 10.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 773 532 Tm
+(Sensitive to broker/network/warm-up/backpressure) Tj
+ET
+BT
+/F1 10.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 773 514 Tm
+(Earlier cold-start spikes came from this area) Tj
+ET
+BT
+/F2 10 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 773 470 Tm
+(Code Ref) Tj
+ET
+BT
+/F1 9.2 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 773 452 Tm
+(Infrastructure/Messaging/RabbitMqRawIngressPublisher.cs) Tj
+ET
+BT
+/F1 9.2 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 773 438 Tm
+(PublishAsync\(\): L29-L55) Tj
+ET
+BT
+/F1 9.2 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 773 424 Tm
+(EnsureChannelAsync\(\): L99-L119) Tj
+ET
+0.078 0.192 0.153 rg
+0.18 0.78 0.631 RG
+2 w
+1133 444 175 190 re B
+BT
+/F2 18 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 1147 606 Tm
+(5. return Ok\(\)) Tj
+ET
+BT
+/F1 11.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 1147 582 Tm
+(HTTP 200 returned) Tj
+ET
+BT
+/F2 12 Tf
+0.18 0.78 0.631 rg
+1 0 0 1 1147 558 Tm
+(Latency Risk: NONE) Tj
+ET
+BT
+/F1 10.5 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 1147 534 Tm
+(Only after all awaited steps finish) Tj
+ET
+BT
+/F2 10 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 1147 486 Tm
+(Code Ref) Tj
+ET
+BT
+/F1 9.2 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 1147 468 Tm
+(Controllers/FacebookWebhooksController.cs) Tj
+ET
+BT
+/F1 9.2 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 1147 454 Tm
+(Receive\(\): L114-L115) Tj
+ET
+0.486 0.78 1 RG
+3 w
+257 538 m 281 538 l S
+0.486 0.78 1 rg
+281 538 m 271 543 l 271 533 l f
+0.486 0.78 1 RG
+3 w
+496 538 m 520 538 l S
+0.486 0.78 1 rg
+520 538 m 510 543 l 510 533 l f
+0.486 0.78 1 RG
+3 w
+735 538 m 759 538 l S
+0.486 0.78 1 rg
+759 538 m 749 543 l 749 533 l f
+0.486 0.78 1 RG
+3 w
+1109 538 m 1133 538 l S
+0.486 0.78 1 rg
+1133 538 m 1123 543 l 1123 533 l f
+0.063 0.094 0.129 rg
+0.169 0.212 0.278 RG
+1.2 w
+48 108 1440 240 re B
+BT
+/F2 24 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 72 314 Tm
+(What this means in practice) Tj
+ET
+BT
+/F2 18 Tf
+0.18 0.78 0.631 rg
+1 0 0 1 88 274 Tm
+(Good) Tj
+ET
+BT
+/F1 16 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 160 274 Tm
+(~100-300 ms ACK is healthy for this architecture.) Tj
+ET
+BT
+/F2 18 Tf
+1 0.706 0.329 rg
+1 0 0 1 88 238 Tm
+(Watch) Tj
+ET
+BT
+/F1 16 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 160 238 Tm
+(~500 ms to 1 s deserves attention, especially if p95 or p99 drifts there.) Tj
+ET
+BT
+/F2 18 Tf
+1 0.42 0.42 rg
+1 0 0 1 88 202 Tm
+(Bad) Tj
+ET
+BT
+/F1 16 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 160 202 Tm
+(Multi-second ACKs are dangerous because retries and duplicate deliveries become likely.) Tj
+ET
+BT
+/F1 16 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 88 164 Tm
+(Current example: 127.4902 ms is in the good zone.) Tj
+ET
+BT
+/F1 16 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 88 138 Tm
+(Primary performance focus remains step 4, because it is the only awaited network hop before 200 OK.) Tj
+ET
+0.07 0.098 0.133 rg
+0.169 0.212 0.278 RG
+1.2 w
+48 28 708 60 re B
+0.07 0.098 0.133 rg
+0.169 0.212 0.278 RG
+1.2 w
+780 28 708 60 re B
+BT
+/F2 13 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 66 62 Tm
+(Why await matters:) Tj
+ET
+BT
+/F1 12 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 66 42 Tm
+(await AcceptAsync\(...\); return Ok\(\); means the response is sent only after publish completes.) Tj
+ET
+BT
+/F2 13 Tf
+0.902 0.929 0.953 rg
+1 0 0 1 798 62 Tm
+(How to use the refs:) Tj
+ET
+BT
+/F1 12 Tf
+0.851 0.89 0.933 rg
+1 0 0 1 798 42 Tm
+(Each box points at the primary code location responsible for that latency segment.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000252 00000 n 
+0000007503 00000 n 
+0000007573 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+7648
+%%EOF
