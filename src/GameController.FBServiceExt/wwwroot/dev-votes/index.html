@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FBServiceExt Votes Monitor</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: rgba(13, 21, 35, 0.94);
+      --panel-2: #121d31;
+      --line: #253655;
+      --text: #e8eef8;
+      --muted: #95a3bb;
+      --accent: #63d4b0;
+      --info: #7ec8ff;
+      --warn: #ffc86d;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: var(--text); background: radial-gradient(circle at top left, rgba(50, 109, 160, 0.18), transparent 28%), radial-gradient(circle at bottom right, rgba(23, 147, 103, 0.14), transparent 26%), var(--bg); font-family: Consolas, "Courier New", monospace; }
+    .shell { max-width: 1440px; margin: 0 auto; padding: 28px; }
+    .hero, .grid { display: grid; gap: 16px; margin-bottom: 16px; }
+    .hero { grid-template-columns: 1.1fr 0.9fr; }
+    .grid { grid-template-columns: 0.95fr 1.05fr; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 20px; box-shadow: 0 20px 36px rgba(0,0,0,.26); backdrop-filter: blur(12px); }
+    h1,h2,p { margin: 0; }
+    h1 { font-size: 34px; margin-bottom: 10px; }
+    h2 { font-size: 18px; margin-bottom: 14px; }
+    .sub { color: var(--muted); line-height: 1.6; }
+    .toolbar { margin-top: 18px; display: grid; grid-template-columns: 170px repeat(2, 1fr) 200px 140px 140px; gap: 12px; align-items: end; }
+    .field { display: grid; gap: 6px; }
+    .field label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    input, select, button { width: 100%; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); padding: 12px 14px; font: inherit; }
+    button { cursor: pointer; }
+    button.primary { background: linear-gradient(135deg, #16725f, #164b86); border: none; }
+    button.secondary { background: #223149; }
+    .meta { display: grid; gap: 10px; }
+    .meta-row { display: flex; justify-content: space-between; gap: 12px; }
+    .meta-label { color: var(--muted); }
+    .badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; color: var(--accent); background: rgba(99, 212, 176, .12); border: 1px solid rgba(99, 212, 176, .2); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .stat { min-height: 94px; border-radius: 15px; padding: 12px; background: rgba(18, 29, 49, .78); border: 1px solid rgba(255,255,255,.06); }
+    .stat-label { color: var(--muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 700; }
+    .stat-note { margin-top: 6px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .summary-item { border-top: 1px solid rgba(255,255,255,.06); padding: 14px 0; }
+    .summary-item:first-child { border-top: none; padding-top: 0; }
+    .summary-head { display: grid; grid-template-columns: 1.3fr 1fr 120px; gap: 10px; align-items: center; }
+    .candidate { font-weight: 700; font-size: 17px; }
+    .numbers { text-align: center; }
+    .unique { text-align: right; color: var(--muted); }
+    .fans { margin-top: 8px; font-size: 13px; color: var(--muted); }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .message { min-height: 44px; padding: 12px 14px; border-radius: 14px; background: rgba(10, 16, 25, .82); border: 1px solid rgba(255,255,255,.08); color: var(--muted); line-height: 1.5; margin-top: 12px; }
+    .empty { color: var(--muted); padding: 18px 0; }
+    @media (max-width: 1200px) { .hero, .grid, .toolbar, .stat-grid, .summary-head { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="card">
+        <h1>Poll Monitor</h1>
+        <p class="sub">Accepted votes dashboard. This page summarizes confirmed votes per candidate, shows unique voters and top 3 fans, and lists the most recent accepted votes.</p>
+        <div class="toolbar">
+          <div class="field"><label for="refreshSelect">Refresh</label><select id="refreshSelect"><option value="5000">5 sec</option><option value="10000">10 sec</option><option value="30000">30 sec</option><option value="60000">60 sec</option><option value="120000" selected>120 sec</option></select></div>
+          <div class="field"><label for="fromInput">Date From (UTC)</label><input id="fromInput" type="datetime-local"></div>
+          <div class="field"><label for="toInput">Date To (UTC)</label><input id="toInput" type="datetime-local"></div>
+          <div class="field"><label for="showInput">ShowId (empty = active)</label><input id="showInput" placeholder="show-2026-episode-1"></div>
+          <button id="refreshButton" class="primary" type="button">Manual Refresh</button>
+          <button id="pauseButton" class="secondary" type="button">Pause</button>
+        </div>
+        <div id="messageBox" class="message">Waiting for first snapshot...</div>
+      </div>
+      <div class="card meta">
+        <div class="meta-row"><span class="meta-label">Status</span><span class="badge"><span class="dot"></span><span id="statusText">Ready</span></span></div>
+        <div class="meta-row"><span class="meta-label">Generated</span><span id="generatedAt">-</span></div>
+        <div class="meta-row"><span class="meta-label">Last refresh</span><span id="lastRefresh">-</span></div>
+        <div class="meta-row"><span class="meta-label">Show source</span><span id="sourceText">active-show</span></div>
+        <div class="meta-row"><span class="meta-label">Effective show</span><span id="activeShowText">-</span></div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Summary</h2>
+        <div class="stat-grid">
+          <div class="stat"><div class="stat-label">Total Votes</div><div id="totalVotes" class="stat-value">0</div><div class="stat-note">Confirmed votes written to AcceptedVotes.</div></div>
+          <div class="stat"><div class="stat-label">Unique Voters</div><div id="totalUniqueUsers" class="stat-value">0</div><div class="stat-note">Distinct recipient/user pairs in the filtered set.</div></div>
+          <div class="stat"><div class="stat-label">Candidates</div><div id="candidateCount" class="stat-value">0</div><div class="stat-note">Candidates with at least one accepted vote.</div></div>
+        </div>
+        <div style="height:14px"></div>
+        <div id="candidateSummary"></div>
+      </div>
+      <div class="card">
+        <h2>Last 200 Accepted Votes</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>User</th><th>Candidate</th><th>Show</th><th>Confirmed</th></tr>
+            </thead>
+            <tbody id="recentVotesRows"><tr><td colspan="4" class="empty">No votes yet.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="/dev-votes/app.js"></script>
+</body>
+</html>

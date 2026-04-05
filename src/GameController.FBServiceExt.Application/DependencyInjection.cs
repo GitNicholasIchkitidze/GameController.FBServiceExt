@@ -1,4 +1,4 @@
-﻿using GameController.FBServiceExt.Application.Abstractions.Ingress;
+using GameController.FBServiceExt.Application.Abstractions.Ingress;
 using GameController.FBServiceExt.Application.Abstractions.Observability;
 using GameController.FBServiceExt.Application.Abstractions.Processing;
 using GameController.FBServiceExt.Application.Options;

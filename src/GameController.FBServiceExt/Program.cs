@@ -8,6 +8,7 @@ using System.Text.Json;
 using GameController.FBServiceExt;
 using GameController.FBServiceExt.Application;
 using GameController.FBServiceExt.Application.Abstractions.State;
+using GameController.FBServiceExt.Application.Abstractions.Observability;
 using GameController.FBServiceExt.Application.Contracts.Observability;
 using GameController.FBServiceExt.Application.Contracts.Runtime;
 using GameController.FBServiceExt.DevLogs;
@@ -209,7 +210,9 @@ try
              context.Request.Path.StartsWithSegments("/dev/metrics", StringComparison.OrdinalIgnoreCase) ||
              context.Request.Path.StartsWithSegments("/dev-metrics", StringComparison.OrdinalIgnoreCase) ||
              context.Request.Path.StartsWithSegments("/dev/admin", StringComparison.OrdinalIgnoreCase) ||
-             context.Request.Path.StartsWithSegments("/dev-admin", StringComparison.OrdinalIgnoreCase)) &&
+             context.Request.Path.StartsWithSegments("/dev-admin", StringComparison.OrdinalIgnoreCase) ||
+             context.Request.Path.StartsWithSegments("/dev/votes", StringComparison.OrdinalIgnoreCase) ||
+             context.Request.Path.StartsWithSegments("/dev-votes", StringComparison.OrdinalIgnoreCase)) &&
             !IsLocalRequest(context))
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
@@ -395,6 +398,34 @@ try
                     statusCode: StatusCodes.Status502BadGateway,
                     title: "Metrics query failed.");
             }
+        });
+
+        app.MapGet("/dev/votes", () => Results.Redirect("/dev-votes/index.html"));
+        app.MapGet("/dev/votes/api", async (
+            DateTime? fromUtc,
+            DateTime? toUtc,
+            string? showId,
+            int? limit,
+            IVotingGateService votingGateService,
+            IAcceptedVotesMonitorService monitorService,
+            CancellationToken cancellationToken) =>
+        {
+            var effectiveShowId = string.IsNullOrWhiteSpace(showId)
+                ? await votingGateService.GetActiveShowIdAsync(cancellationToken)
+                : showId.Trim();
+            var snapshot = await monitorService.GetSnapshotAsync(fromUtc, toUtc, effectiveShowId, limit ?? 200, cancellationToken);
+            return Results.Ok(new
+            {
+                generatedAtUtc = snapshot.GeneratedAtUtc,
+                fromUtc = snapshot.FromUtc,
+                toUtc = snapshot.ToUtc,
+                showId = snapshot.ShowId,
+                totalVotes = snapshot.TotalVotes,
+                totalUniqueUsers = snapshot.TotalUniqueUsers,
+                candidates = snapshot.Candidates,
+                recentVotes = snapshot.RecentVotes,
+                source = string.IsNullOrWhiteSpace(showId) ? "active-show" : "explicit-show"
+            });
         });
 
         app.MapGet("/dev/admin", () => Results.Redirect("/dev-admin/index.html"));

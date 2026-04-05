@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.TryAddSingleton<RedisConnectionProvider>();
         services.AddSingleton<RedisFakeMetaMessengerStore>();
         services.AddSingleton<IVotingGateService, RedisVotingGateService>();
+        services.AddSingleton<IAcceptedVotesMonitorService, SqlAcceptedVotesMonitorService>();
         services.AddSingleton<IWebhookSignatureValidator, MetaWebhookSignatureValidator>();
         services.AddSingleton<RabbitMqRawIngressPublisher>();
         services.AddSingleton<IRawIngressPublisher>(serviceProvider => serviceProvider.GetRequiredService<RabbitMqRawIngressPublisher>());
@@ -47,7 +48,8 @@ public static class DependencyInjection
 
         services.AddHealthChecks()
             .AddCheck<RabbitMqConfigurationHealthCheck>("rabbitmq")
-            .AddCheck<RedisConfigurationHealthCheck>("redis");
+            .AddCheck<RedisConfigurationHealthCheck>("redis")
+            .AddCheck<SqlStorageConfigurationHealthCheck>("sql");
 
         AddRuntimeMetricsInfrastructure(services, configuration, includeRabbitMqQueueReader: true);
 
@@ -118,6 +120,7 @@ public static class DependencyInjection
         services.AddSingleton<INormalizedEventConsumer, RabbitMqNormalizedEventConsumer>();
         services.AddSingleton<IEventDeduplicationStore, RedisEventDeduplicationStore>();
         services.AddSingleton<IVotingGateService, RedisVotingGateService>();
+        services.AddSingleton<IAcceptedVotesMonitorService, SqlAcceptedVotesMonitorService>();
         services.AddSingleton<IUserProcessingLockManager, RedisUserProcessingLockManager>();
         services.AddSingleton<INormalizedEventStore, SqlNormalizedEventStore>();
         services.AddSingleton<IAcceptedVoteStore, SqlAcceptedVoteStore>();
