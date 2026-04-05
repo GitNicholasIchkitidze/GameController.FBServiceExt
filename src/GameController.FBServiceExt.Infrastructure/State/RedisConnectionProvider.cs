@@ -4,7 +4,7 @@ using StackExchange.Redis;
 
 namespace GameController.FBServiceExt.Infrastructure.State;
 
-internal sealed class RedisConnectionProvider : IDisposable
+public sealed class RedisConnectionProvider : IDisposable
 {
     private readonly IOptionsMonitor<Options.RedisOptions> _optionsMonitor;
     private readonly ILogger<RedisConnectionProvider> _logger;
@@ -64,3 +64,4 @@ internal sealed class RedisConnectionProvider : IDisposable
         _gate.Dispose();
     }
 }
+

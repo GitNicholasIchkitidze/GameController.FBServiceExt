@@ -13,13 +13,14 @@ public sealed class NoOpRawIngressPublisher : IRawIngressPublisher
         _logger = logger;
     }
 
-    public ValueTask PublishAsync(RawWebhookEnvelope envelope, CancellationToken cancellationToken)
+    public ValueTask PublishAsync(RawIngressPublishRequest publishRequest, CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-            "Raw ingress envelope accepted. EnvelopeId: {EnvelopeId}, Source: {Source}, RequestId: {RequestId}",
-            envelope.EnvelopeId,
-            envelope.Source,
-            envelope.RequestId);
+            "Raw ingress body accepted. EnvelopeId: {EnvelopeId}, Source: {Source}, RequestId: {RequestId}, BodyBytes: {BodyBytes}",
+            publishRequest.EnvelopeId,
+            publishRequest.Source,
+            publishRequest.RequestId,
+            publishRequest.BodyUtf8.Length);
 
         return ValueTask.CompletedTask;
     }

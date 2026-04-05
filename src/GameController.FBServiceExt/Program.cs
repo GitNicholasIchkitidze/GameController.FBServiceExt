@@ -1,11 +1,24 @@
+using System.Reflection;
 using System.Diagnostics;
 using System.Net;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using GameController.FBServiceExt;
 using GameController.FBServiceExt.Application;
+using GameController.FBServiceExt.Application.Abstractions.State;
+using GameController.FBServiceExt.Application.Contracts.Observability;
+using GameController.FBServiceExt.Application.Contracts.Runtime;
 using GameController.FBServiceExt.DevLogs;
 using GameController.FBServiceExt.DevMetrics;
 using GameController.FBServiceExt.Infrastructure;
 using GameController.FBServiceExt.Infrastructure.Logging;
+using GameController.FBServiceExt.Infrastructure.Messaging;
 using GameController.FBServiceExt.Options;
+using GameController.FBServiceExt.Startup;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -20,6 +33,19 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    var environmentName = builder.Environment.EnvironmentName;
+    builder.Configuration.Sources.Clear();
+    AddSharedJsonFiles(builder.Configuration, builder.Environment.ContentRootPath, environmentName);
+    builder.Configuration
+        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+        .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true)
+        .AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true)
+        .AddEnvironmentVariables();
+
+    if (args is { Length: > 0 })
+    {
+        builder.Configuration.AddCommandLine(args);
+    }
     builder.Logging.Configure(options =>
     {
         options.ActivityTrackingOptions =
@@ -46,13 +72,84 @@ try
     builder.Services.AddProblemDetails();
     builder.Services.AddControllers();
     builder.Services.AddSingleton<DevMetricsDashboardService>();
+    builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+        .AddCookie(options =>
+        {
+            options.Cookie.Name = builder.Configuration.GetValue<string>($"{AdminPortalOptions.SectionName}:CookieName")
+                                  ?? AdminPortalOptions.DefaultCookieName;
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SameSite = SameSiteMode.Lax;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            options.SlidingExpiration = true;
+            options.ExpireTimeSpan = TimeSpan.FromMinutes(
+                Math.Max(
+                    5,
+                    builder.Configuration.GetValue<int?>($"{AdminPortalOptions.SectionName}:SessionIdleTimeoutMinutes")
+                    ?? AdminPortalOptions.DefaultSessionIdleTimeoutMinutes));
+            options.Events = new CookieAuthenticationEvents
+            {
+                OnRedirectToLogin = context =>
+                {
+                    if (context.Request.Path.StartsWithSegments("/admin/api", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return Task.CompletedTask;
+                    }
+
+                    context.Response.Redirect("/admin");
+                    return Task.CompletedTask;
+                },
+                OnRedirectToAccessDenied = context =>
+                {
+                    if (context.Request.Path.StartsWithSegments("/admin/api", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        return Task.CompletedTask;
+                    }
+
+                    context.Response.Redirect("/admin");
+                    return Task.CompletedTask;
+                }
+            };
+        });
+    builder.Services.AddAuthorization();
+    builder.Services.AddOptions<AdminPortalOptions>()
+        .Bind(builder.Configuration.GetSection(AdminPortalOptions.SectionName))
+        .Validate(static options =>
+                !string.IsNullOrWhiteSpace(options.Username) &&
+                !string.IsNullOrWhiteSpace(options.Password),
+            "AdminPortal username and password are required.")
+        .ValidateOnStart();
     builder.Services.AddOptions<DevLogViewerOptions>()
         .Bind(builder.Configuration.GetSection(DevLogViewerOptions.SectionName));
     builder.Services.AddHttpClient<GraylogLogViewerService>(client => client.Timeout = TimeSpan.FromSeconds(5));
+    builder.Services.AddHttpClient<GraylogLogCleanupService>(client => client.Timeout = TimeSpan.FromSeconds(30));
+    builder.Services.AddHostedService<LocalDevBrowserTabsHostedService>();
     builder.Services.AddIngressApplication(builder.Configuration);
     builder.Services.AddIngressInfrastructure(builder.Configuration);
 
     var app = builder.Build();
+
+    var devLogViewerOptions = app.Services.GetRequiredService<IOptionsMonitor<DevLogViewerOptions>>();
+    if (devLogViewerOptions.CurrentValue.ClearLogsOnStart)
+    {
+        using var startupScope = app.Services.CreateScope();
+        var graylogLogCleanupService = startupScope.ServiceProvider.GetRequiredService<GraylogLogCleanupService>();
+
+        try
+        {
+            var summary = await graylogLogCleanupService.ClearLogsAsync(CancellationToken.None);
+            Log.Information(
+                "Graylog startup cleanup completed. IndexSetsDiscovered: {IndexSetsDiscovered}, IndexSetsCycled: {IndexSetsCycled}, DeletedIndices: {DeletedIndices}",
+                summary.IndexSetsDiscovered,
+                summary.IndexSetsCycled,
+                summary.DeletedIndices);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Graylog startup cleanup failed.");
+        }
+    }
 
     app.UseSerilogRequestLogging(options =>
     {
@@ -70,7 +167,9 @@ try
                 path.StartsWithSegments("/dev/logs", StringComparison.OrdinalIgnoreCase) ||
                 path.StartsWithSegments("/dev-logs", StringComparison.OrdinalIgnoreCase) ||
                 path.StartsWithSegments("/dev/metrics", StringComparison.OrdinalIgnoreCase) ||
-                path.StartsWithSegments("/dev-metrics", StringComparison.OrdinalIgnoreCase))
+                path.StartsWithSegments("/dev-metrics", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWithSegments("/dev/admin", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWithSegments("/dev-admin", StringComparison.OrdinalIgnoreCase))
             {
                 return LogEventLevel.Verbose;
             }
@@ -101,12 +200,16 @@ try
     });
 
     app.UseExceptionHandler();
+    app.UseAuthentication();
+    app.UseAuthorization();
     app.Use(async (context, next) =>
     {
         if ((context.Request.Path.StartsWithSegments("/dev/logs", StringComparison.OrdinalIgnoreCase) ||
              context.Request.Path.StartsWithSegments("/dev-logs", StringComparison.OrdinalIgnoreCase) ||
              context.Request.Path.StartsWithSegments("/dev/metrics", StringComparison.OrdinalIgnoreCase) ||
-             context.Request.Path.StartsWithSegments("/dev-metrics", StringComparison.OrdinalIgnoreCase)) &&
+             context.Request.Path.StartsWithSegments("/dev-metrics", StringComparison.OrdinalIgnoreCase) ||
+             context.Request.Path.StartsWithSegments("/dev/admin", StringComparison.OrdinalIgnoreCase) ||
+             context.Request.Path.StartsWithSegments("/dev-admin", StringComparison.OrdinalIgnoreCase)) &&
             !IsLocalRequest(context))
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
@@ -117,8 +220,147 @@ try
     });
     app.UseStaticFiles();
 
-    var devLogViewerOptions = app.Services.GetRequiredService<IOptionsMonitor<DevLogViewerOptions>>();
-    var devToolsEnabled = app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Performance") || devLogViewerOptions.CurrentValue.Enabled;
+    app.MapGet("/admin", () => Results.Redirect("/admin/index.html"));
+    app.MapGet("/admin/api/session", (HttpContext context) =>
+    {
+        var identity = context.User.Identity;
+        if (identity is null || !identity.IsAuthenticated)
+        {
+            return Results.Ok(new
+            {
+                authenticated = false,
+                username = string.Empty
+            });
+        }
+
+        return Results.Ok(new
+        {
+            authenticated = true,
+            username = context.User.FindFirstValue(ClaimTypes.Name) ?? identity.Name ?? string.Empty
+        });
+    });
+    app.MapPost("/admin/api/login", async (
+        AdminLoginRequest request,
+        HttpContext context,
+        IOptionsMonitor<AdminPortalOptions> optionsMonitor) =>
+    {
+        var options = optionsMonitor.CurrentValue;
+        if (!FixedTimeEquals(request.Username, options.Username) || !FixedTimeEquals(request.Password, options.Password))
+        {
+            return Results.Json(
+                new
+                {
+                    authenticated = false,
+                    error = "Invalid username or password."
+                },
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.Name, options.Username),
+            new Claim(ClaimTypes.Role, "Operator")
+        };
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
+        await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+        return Results.Ok(new
+        {
+            authenticated = true,
+            username = options.Username
+        });
+    });
+    app.MapPost("/admin/api/logout", async (HttpContext context) =>
+    {
+        await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return Results.Ok(new
+        {
+            authenticated = false
+        });
+    });
+
+    var adminApi = app.MapGroup("/admin/api").RequireAuthorization();
+    adminApi.MapGet("/dashboard", async (
+        IVotingGateService votingGateService,
+        DevMetricsDashboardService dashboardService,
+        HttpContext context,
+        CancellationToken cancellationToken) =>
+    {
+        var state = await votingGateService.GetStateAsync(cancellationToken);
+        var snapshot = await dashboardService.GetSnapshotAsync(cancellationToken);
+
+        return Results.Ok(new AdminDashboardResponse(
+            VotingStarted: state.VotingStarted,
+            ActiveShowId: state.ActiveShowId,
+            Utc: DateTime.UtcNow,
+            Operator: context.User.FindFirstValue(ClaimTypes.Name) ?? string.Empty,
+            Source: "redis",
+            Metrics: snapshot));
+    });
+    adminApi.MapPut("/voting", async (
+        VotingGateUpdateRequest request,
+        IVotingGateService votingGateService,
+        DevMetricsDashboardService dashboardService,
+        HttpContext context,
+        CancellationToken cancellationToken) =>
+    {
+        var updatedState = new VotingRuntimeState(request.VotingStarted, string.IsNullOrWhiteSpace(request.ActiveShowId) ? null : request.ActiveShowId.Trim());
+        await votingGateService.SetStateAsync(updatedState, cancellationToken);
+        var snapshot = await dashboardService.GetSnapshotAsync(cancellationToken);
+
+        return Results.Ok(new AdminDashboardResponse(
+            VotingStarted: updatedState.VotingStarted,
+            ActiveShowId: updatedState.ActiveShowId,
+            Utc: DateTime.UtcNow,
+            Operator: context.User.FindFirstValue(ClaimTypes.Name) ?? string.Empty,
+            Source: "redis",
+            Metrics: snapshot));
+    });
+
+    if (app.Environment.IsEnvironment("PerformanceFakeFb"))
+    {
+        app.MapDelete("/fake-meta/api/messages", async (RedisFakeMetaMessengerStore store, CancellationToken cancellationToken) =>
+        {
+            await store.ClearAsync(cancellationToken);
+            return Results.NoContent();
+        });
+
+        app.MapGet("/fake-meta/api/recipients/{recipientId}/messages", async (
+            string recipientId,
+            long? afterSequence,
+            int? waitSeconds,
+            RedisFakeMetaMessengerStore store,
+            CancellationToken cancellationToken) =>
+        {
+            var safeWaitSeconds = Math.Clamp(waitSeconds ?? 0, 0, 30);
+            var messages = safeWaitSeconds > 0
+                ? await store.WaitForMessagesAsync(recipientId, afterSequence ?? 0, TimeSpan.FromSeconds(safeWaitSeconds), cancellationToken)
+                : await store.GetMessagesAsync(recipientId, afterSequence ?? 0, cancellationToken);
+            return Results.Ok(messages);
+        });
+
+        app.MapPost("/fake-meta/{version}/me/messages", async (string version, HttpRequest request, RedisFakeMetaMessengerStore store, CancellationToken cancellationToken) =>
+        {
+            using var document = await JsonDocument.ParseAsync(request.Body, cancellationToken: cancellationToken);
+            if (!document.RootElement.TryGetProperty("recipient", out var recipient) ||
+                recipient.ValueKind != JsonValueKind.Object ||
+                !recipient.TryGetProperty("id", out var recipientIdElement) ||
+                recipientIdElement.ValueKind != JsonValueKind.String)
+            {
+                return Results.BadRequest(new { error = "recipient.id is required" });
+            }
+
+            var recipientId = recipientIdElement.GetString() ?? string.Empty;
+            var captured = await store.CaptureRequestAsync(recipientId, version, document, cancellationToken);
+            return Results.Ok(new
+            {
+                recipient_id = recipientId,
+                message_id = $"fake-meta.{captured.Sequence}"
+            });
+        });
+    }
+    var devToolsEnabled = app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Performance") || app.Environment.IsEnvironment("Simulator") || app.Environment.IsEnvironment("PerformanceFakeFb") || devLogViewerOptions.CurrentValue.Enabled;
     if (devToolsEnabled)
     {
         app.MapGet("/dev/logs", () => Results.Redirect("/dev-logs/index.html"));
@@ -153,6 +395,31 @@ try
                     statusCode: StatusCodes.Status502BadGateway,
                     title: "Metrics query failed.");
             }
+        });
+
+        app.MapGet("/dev/admin", () => Results.Redirect("/dev-admin/index.html"));
+        app.MapGet("/dev/admin/api/voting", async (IVotingGateService votingGateService, CancellationToken cancellationToken) =>
+        {
+            var state = await votingGateService.GetStateAsync(cancellationToken);
+            return Results.Ok(new
+            {
+                votingStarted = state.VotingStarted,
+                activeShowId = state.ActiveShowId,
+                utc = DateTime.UtcNow,
+                source = "redis"
+            });
+        });
+        app.MapPut("/dev/admin/api/voting", async (VotingGateUpdateRequest request, IVotingGateService votingGateService, CancellationToken cancellationToken) =>
+        {
+            var updatedState = new VotingRuntimeState(request.VotingStarted, string.IsNullOrWhiteSpace(request.ActiveShowId) ? null : request.ActiveShowId.Trim());
+            await votingGateService.SetStateAsync(updatedState, cancellationToken);
+            return Results.Ok(new
+            {
+                votingStarted = updatedState.VotingStarted,
+                activeShowId = updatedState.ActiveShowId,
+                utc = DateTime.UtcNow,
+                source = "redis"
+            });
         });
     }
 
@@ -193,3 +460,63 @@ static bool IsLocalRequest(HttpContext httpContext)
     var localIpAddress = httpContext.Connection.LocalIpAddress;
     return localIpAddress is not null && remoteIpAddress.Equals(localIpAddress);
 }
+
+static bool FixedTimeEquals(string? left, string? right)
+{
+    var leftBytes = Encoding.UTF8.GetBytes(left ?? string.Empty);
+    var rightBytes = Encoding.UTF8.GetBytes(right ?? string.Empty);
+
+    return leftBytes.Length == rightBytes.Length &&
+           CryptographicOperations.FixedTimeEquals(leftBytes, rightBytes);
+}
+
+static void AddSharedJsonFiles(IConfigurationBuilder configurationBuilder, string contentRootPath, string environmentName)
+{
+    foreach (var sharedPath in ResolveSharedConfigPaths(contentRootPath, environmentName))
+    {
+        configurationBuilder.AddJsonFile(sharedPath, optional: false, reloadOnChange: true);
+    }
+}
+static IEnumerable<string> ResolveSharedConfigPaths(string contentRootPath, string environmentName)
+{
+    var candidateRoots = new[]
+    {
+        contentRootPath,
+        Path.GetFullPath(Path.Combine(contentRootPath, "..", ".."))
+    };
+    foreach (var root in candidateRoots.Distinct(StringComparer.OrdinalIgnoreCase))
+    {
+        var shared = Path.Combine(root, "appsettings.Shared.json");
+        if (!File.Exists(shared))
+        {
+            continue;
+        }
+        yield return shared;
+        var environmentShared = Path.Combine(root, $"appsettings.Shared.{environmentName}.json");
+        if (File.Exists(environmentShared))
+        {
+            yield return environmentShared;
+        }
+        yield break;
+    }
+}
+
+internal sealed record AdminLoginRequest(string Username, string Password);
+internal sealed record VotingGateUpdateRequest(bool VotingStarted, string? ActiveShowId);
+internal sealed record AdminDashboardResponse(
+    bool VotingStarted,
+    string? ActiveShowId,
+    DateTime Utc,
+    string Operator,
+    string Source,
+    RuntimeMetricsDashboardSnapshot Metrics);
+
+
+
+
+
+
+
+
+
+

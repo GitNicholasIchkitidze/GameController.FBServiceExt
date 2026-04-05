@@ -15,7 +15,7 @@ public sealed class MetaWebhookSignatureValidator : IWebhookSignatureValidator
         _optionsMonitor = optionsMonitor;
     }
 
-    public bool IsValid(string requestBody, string? signatureHeader)
+    public bool IsValid(ReadOnlyMemory<byte> requestBodyUtf8, string? signatureHeader)
     {
         var options = _optionsMonitor.CurrentValue;
         if (!options.RequireSignatureValidation)
@@ -50,10 +50,9 @@ public sealed class MetaWebhookSignatureValidator : IWebhookSignatureValidator
             return false;
         }
 
-        var bodyBytes = Encoding.UTF8.GetBytes(requestBody);
         var secretBytes = Encoding.UTF8.GetBytes(options.AppSecret);
         using var hmac = new HMACSHA256(secretBytes);
-        var computedHash = hmac.ComputeHash(bodyBytes);
+        var computedHash = hmac.ComputeHash(requestBodyUtf8.ToArray());
 
         return CryptographicOperations.FixedTimeEquals(computedHash, expectedHash);
     }

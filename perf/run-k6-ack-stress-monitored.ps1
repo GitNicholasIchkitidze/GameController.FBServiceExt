@@ -21,6 +21,8 @@ param(
     [string]$NormalizedEventQueueName = 'fbserviceext.normalized.events',
     [int]$QueueDrainTimeoutSeconds = 180,
     [int]$MonitorSampleIntervalMilliseconds = 1000,
+    [string]$ArtifactPrefix = 'ack-stress-monitored',
+    [string]$K6ArtifactPrefix = 'ack-250rps',
     [switch]$SkipReadyCheck,
     [switch]$SkipQueueDrainCheck
 )
@@ -53,7 +55,7 @@ $durationSeconds = Convert-DurationToSeconds -Value $Duration
 $solutionRoot = Split-Path -Parent $PSScriptRoot
 $artifactRoot = Join-Path $solutionRoot 'artifacts\perf'
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$artifactDir = Join-Path $artifactRoot "ack-stress-monitored-$timestamp"
+$artifactDir = Join-Path $artifactRoot "$ArtifactPrefix-$timestamp"
 $monitorDir = Join-Path $artifactDir 'rabbitmq-monitor'
 $stopFilePath = Join-Path $monitorDir 'stop.signal'
 
@@ -129,6 +131,7 @@ try {
         RawIngressQueueName = $RawIngressQueueName
         NormalizedEventQueueName = $NormalizedEventQueueName
         QueueDrainTimeoutSeconds = $QueueDrainTimeoutSeconds
+        ArtifactPrefix = $K6ArtifactPrefix
     }
 
     if ($PSBoundParameters.ContainsKey('AppSecret') -and -not [string]::IsNullOrWhiteSpace($AppSecret)) {

@@ -1,4 +1,4 @@
-using GameController.FBServiceExt.Application.Abstractions.Persistence;
+﻿using GameController.FBServiceExt.Application.Abstractions.Persistence;
 using GameController.FBServiceExt.Application.Contracts.Votes;
 using GameController.FBServiceExt.Infrastructure.Data;
 using GameController.FBServiceExt.Infrastructure.Data.Entities;
@@ -24,13 +24,15 @@ internal sealed class SqlAcceptedVoteStore : IAcceptedVoteStore
             CorrelationId = vote.CorrelationId,
             UserId = vote.UserId,
             RecipientId = vote.RecipientId,
+            ShowId = vote.ShowId,
             CandidateId = vote.CandidateId,
             CandidateDisplayName = vote.CandidateDisplayName,
             SourceEventId = vote.SourceEventId,
             ConfirmedAtUtc = vote.ConfirmedAtUtc,
             CooldownUntilUtc = vote.CooldownUntilUtc,
             Channel = vote.Channel,
-            MetadataJson = vote.MetadataJson
+            MetadataJson = vote.MetadataJson,
+            UserAccountName = vote.UserAccountName
         });
 
         try

@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
 using GameController.FBServiceExt.Application.Abstractions.Messaging;
@@ -36,7 +36,7 @@ internal sealed class RabbitMqRawIngressPublisher : IRawIngressPublisher, IAsync
         _logger = logger;
     }
 
-    public async ValueTask PublishAsync(RawWebhookEnvelope envelope, CancellationToken cancellationToken)
+    public async ValueTask PublishAsync(RawIngressPublishRequest publishRequest, CancellationToken cancellationToken)
     {
         var options = _optionsMonitor.CurrentValue;
         var totalStopwatch = Stopwatch.StartNew();
@@ -59,16 +59,20 @@ internal sealed class RabbitMqRawIngressPublisher : IRawIngressPublisher, IAsync
                 channel = await CreateDeclaredChannelAsync(options, cancellationToken);
             }
 
-            var body = RabbitMqMessageSerializer.Serialize(envelope);
             var properties = new BasicProperties
             {
                 ContentType = "application/json",
                 ContentEncoding = Encoding.UTF8.WebName,
                 DeliveryMode = DeliveryModes.Persistent,
-                MessageId = envelope.EnvelopeId.ToString("N"),
-                CorrelationId = envelope.RequestId,
-                Type = nameof(RawWebhookEnvelope),
-                Timestamp = new AmqpTimestamp(new DateTimeOffset(envelope.ReceivedAtUtc).ToUnixTimeSeconds())
+                MessageId = publishRequest.EnvelopeId.ToString("N"),
+                CorrelationId = publishRequest.RequestId,
+                Type = RabbitMqMessageSerializer.RawIngressBodyMessageType,
+                AppId = publishRequest.Source,
+                Timestamp = new AmqpTimestamp(new DateTimeOffset(publishRequest.ReceivedAtUtc).ToUnixTimeSeconds()),
+                Headers = new Dictionary<string, object?>
+                {
+                    [RabbitMqMessageSerializer.RawIngressReceivedAtUnixMillisecondsHeader] = new DateTimeOffset(publishRequest.ReceivedAtUtc).ToUnixTimeMilliseconds()
+                }
             };
 
             var publishStopwatch = Stopwatch.StartNew();
@@ -77,7 +81,7 @@ internal sealed class RabbitMqRawIngressPublisher : IRawIngressPublisher, IAsync
                 routingKey: options.RawIngressQueueName,
                 mandatory: true,
                 basicProperties: properties,
-                body: body,
+                body: publishRequest.BodyUtf8,
                 cancellationToken: cancellationToken);
             publishStopwatch.Stop();
             publishMs = publishStopwatch.Elapsed.TotalMilliseconds;
@@ -88,7 +92,7 @@ internal sealed class RabbitMqRawIngressPublisher : IRawIngressPublisher, IAsync
             {
                 _logger.LogWarning(
                     "Raw ingress RabbitMQ publish pressure detected. EnvelopeId: {EnvelopeId}, RentWaitMs: {RentWaitMs}, PublishMs: {PublishMs}, LeasedChannels: {LeasedChannels}, PoolSize: {PoolSize}",
-                    envelope.EnvelopeId,
+                    publishRequest.EnvelopeId,
                     rentStopwatch.Elapsed.TotalMilliseconds,
                     publishMs,
                     Volatile.Read(ref _leasedChannels),
@@ -96,9 +100,10 @@ internal sealed class RabbitMqRawIngressPublisher : IRawIngressPublisher, IAsync
             }
 
             _logger.LogDebug(
-                "Published raw ingress envelope to RabbitMQ. EnvelopeId: {EnvelopeId}, Queue: {Queue}",
-                envelope.EnvelopeId,
-                options.RawIngressQueueName);
+                "Published raw ingress body to RabbitMQ. EnvelopeId: {EnvelopeId}, Queue: {Queue}, BodyBytes: {BodyBytes}",
+                publishRequest.EnvelopeId,
+                options.RawIngressQueueName,
+                publishRequest.BodyUtf8.Length);
         }
         catch (Exception exception)
         {
@@ -283,6 +288,17 @@ internal sealed class RabbitMqRawIngressPublisher : IRawIngressPublisher, IAsync
         _runtimeMetricsCollector.SetGauge("api.ingress.publisher_channels_available", Math.Max(0, _configuredPoolSize - leased));
     }
 
+    private static async ValueTask DisposeChannelQuietlyAsync(IChannel channel)
+    {
+        try
+        {
+            await channel.DisposeAsync();
+        }
+        catch
+        {
+        }
+    }
+
     private static string SanitizeMetricSegment(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -298,16 +314,4 @@ internal sealed class RabbitMqRawIngressPublisher : IRawIngressPublisher, IAsync
 
         return builder.ToString().Trim('_');
     }
-
-    private static async ValueTask DisposeChannelQuietlyAsync(IChannel channel)
-    {
-        try
-        {
-            await channel.DisposeAsync();
-        }
-        catch
-        {
-        }
-    }
 }
-

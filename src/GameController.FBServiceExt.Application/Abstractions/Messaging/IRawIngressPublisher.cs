@@ -4,5 +4,5 @@ namespace GameController.FBServiceExt.Application.Abstractions.Messaging;
 
 public interface IRawIngressPublisher
 {
-    ValueTask PublishAsync(RawWebhookEnvelope envelope, CancellationToken cancellationToken);
+    ValueTask PublishAsync(RawIngressPublishRequest publishRequest, CancellationToken cancellationToken);
 }

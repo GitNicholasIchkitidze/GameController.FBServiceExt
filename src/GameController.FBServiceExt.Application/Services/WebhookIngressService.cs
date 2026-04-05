@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using GameController.FBServiceExt.Application.Abstractions.Ingress;
 using GameController.FBServiceExt.Application.Abstractions.Messaging;
 using GameController.FBServiceExt.Application.Abstractions.Observability;
@@ -35,38 +35,37 @@ public sealed class WebhookIngressService : IWebhookIngressService
     public async ValueTask AcceptAsync(AcceptWebhookCommand command, CancellationToken cancellationToken)
     {
         var options = _optionsMonitor.CurrentValue;
-        var envelope = new RawWebhookEnvelope(
+        var publishRequest = new RawIngressPublishRequest(
             Guid.NewGuid(),
             options.Source,
             command.RequestId,
             command.ReceivedAtUtc ?? _timeProvider.GetUtcNow().UtcDateTime,
-            command.Headers,
-            command.Body);
+            command.BodyUtf8);
 
         var publishStopwatch = Stopwatch.StartNew();
-        await _publisher.PublishAsync(envelope, cancellationToken);
+        await _publisher.PublishAsync(publishRequest, cancellationToken);
         publishStopwatch.Stop();
 
         _runtimeMetricsCollector.Increment("api.ingress.envelopes_published");
-        _runtimeMetricsCollector.Increment("api.ingress.bytes_published_total", envelope.Body.Length);
-        _runtimeMetricsCollector.SetGauge("api.ingress.last_body_bytes", envelope.Body.Length);
+        _runtimeMetricsCollector.Increment("api.ingress.bytes_published_total", publishRequest.BodyUtf8.Length);
+        _runtimeMetricsCollector.SetGauge("api.ingress.last_body_bytes", publishRequest.BodyUtf8.Length);
         _runtimeMetricsCollector.ObserveDuration("api.ingress.accept_publish_ms", publishStopwatch.Elapsed.TotalMilliseconds);
 
         if (publishStopwatch.Elapsed.TotalMilliseconds >= 250)
         {
             _logger.LogWarning(
                 "Ingress publish path was slow. EnvelopeId: {EnvelopeId}, RequestId: {RequestId}, BodyBytes: {BodyBytes}, PublishMs: {PublishMs}",
-                envelope.EnvelopeId,
-                envelope.RequestId,
-                envelope.Body.Length,
+                publishRequest.EnvelopeId,
+                publishRequest.RequestId,
+                publishRequest.BodyUtf8.Length,
                 publishStopwatch.Elapsed.TotalMilliseconds);
         }
 
         _logger.LogDebug(
-            "Raw webhook envelope published to ingress queue. EnvelopeId: {EnvelopeId}, RequestId: {RequestId}, Source: {Source}, BodyBytes: {BodyBytes}",
-            envelope.EnvelopeId,
-            envelope.RequestId,
-            envelope.Source,
-            envelope.Body.Length);
+            "Raw webhook body published to ingress queue. EnvelopeId: {EnvelopeId}, RequestId: {RequestId}, Source: {Source}, BodyBytes: {BodyBytes}",
+            publishRequest.EnvelopeId,
+            publishRequest.RequestId,
+            publishRequest.Source,
+            publishRequest.BodyUtf8.Length);
     }
 }

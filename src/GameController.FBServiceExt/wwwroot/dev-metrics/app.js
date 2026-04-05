@@ -32,16 +32,20 @@ const tooltips = {
   apiInflight: 'ამ მომენტში API-ში ერთდროულად დამუშავებული webhook request-ები.',
   apiPublisherPool: 'რამდენი publisher channel არის გამოყენებული და რამდენია თავისუფალი.',
   apiFailures: 'client abort-ები, publish failure-ები და unhandled exception-ები.',
+  apiGarbageDropped: 'არასასარგებლო ან უცნობი მესიჯები, რომლებიც API-მ business flow-მდე გაჭრა და RabbitMQ-ში აღარ გაუშვა.',
   rawEnvelopes: 'queue-\u10D3\u10D0\u10DC \u10D0\u10E6\u10D4\u10D1\u10E3\u10DA\u10D8 raw envelope-\u10D4\u10D1\u10D8.',
   rawNormalizedEvents: 'raw envelope-\u10D4\u10D1\u10D8\u10D3\u10D0\u10DC \u10DB\u10D8\u10E6\u10D4\u10D1\u10E3\u10DA\u10D8 normalized event-\u10D4\u10D1\u10D8.',
   rawBatchP95: 'raw cycle-\u10E8\u10D8 batch-\u10E8\u10D8 \u10E0\u10D0\u10DB\u10D3\u10D4\u10DC event \u10DB\u10DD\u10D3\u10D8\u10E1.',
   rawParallelism: '\u10E0\u10D0\u10DB\u10D3\u10D4\u10DC\u10D8 raw loop \u10DB\u10E3\u10E8\u10D0\u10DD\u10D1\u10E1 \u10D4\u10E0\u10D7 worker process-\u10E8\u10D8.',
   rawCycleP95: 'raw normalizer cycle-\u10D8\u10E1 p95.',
   rawFailures: 'raw loop-\u10D8\u10E1 \u10E8\u10D4\u10EA\u10D3\u10DD\u10DB\u10D4\u10D1\u10D8.',
+  rawGarbageDropped: 'raw queue-მდე მისული ისეთი მესიჯები, რომლებიც worker-მ business event-ად არ ჩათვალა და normalized queue-მდე აღარ გაუშვა.',
+  rawBusinessPublished: 'raw worker-მა normalized/business processing pipeline-ში რეალურად გაშვებული event-ები.',
   processorEventsSeen: 'processor-\u10DB \u10DC\u10D0\u10DC\u10D0\u10EE\u10D8 normalized event-\u10D4\u10D1\u10D8.',
   processorQueueReceipts: 'normalized queue-\u10D3\u10D0\u10DC \u10D0\u10E6\u10D4\u10D1\u10E3\u10DA\u10D8 event-\u10D4\u10D1\u10D8.',
   processorBusinessFlow: 'state transition-\u10D4\u10D1\u10D8\u10E1 \u10EF\u10D0\u10DB\u10D8.',
   processorIgnored: '\u10D3\u10D0\u10D8\u10D8\u10D2\u10DC\u10DD\u10E0\u10D4\u10D1\u10E3\u10DA\u10D8 event-\u10D4\u10D1\u10D8.',
+  processorCooldownAttempts: 'მომხმარებლის ის მცდელობები, როცა cooldown ჯერ არ იყო გასული და ხმის მიცემა მაინც სცადა. msg = ტექსტური მცდელობა, pb = postback მცდელობა.',
   normalizedCycleP95: 'normalized processor cycle-\u10D8\u10E1 p95.',
   queueStatus: 'queue pressure-\u10D8\u10E1 \u10D8\u10DC\u10E2\u10D4\u10E0\u10DE\u10E0\u10D4\u10E2\u10D0\u10EA\u10D8\u10D0.',
   readyBacklog: 'queue-\u10E8\u10D8 \u10DB\u10DD\u10DB\u10DA\u10DD\u10D3\u10D8\u10DC\u10D4 message-\u10D4\u10D1\u10D8.',
@@ -68,12 +72,17 @@ const staticTitles = [
   ['label[for="refreshSelect"]', 'refresh \u10D8\u10DC\u10E2\u10D4\u10E0\u10D5\u10D0\u10DA\u10D8.'],
   ['#refreshSelect', 'refresh \u10D8\u10DC\u10E2\u10D4\u10E0\u10D5\u10D0\u10DA\u10D8.'],
   ['#refreshButton', '\u10D0\u10EE\u10DA\u10D0\u10D5\u10D4 \u10D2\u10D0\u10DC\u10D0\u10D0\u10EE\u10DA\u10D4.'],
-  ['#pauseButton', 'auto-refresh pause/resume.'],
+  ['#pauseButton', 'ავტო-განახლების შეჩერება ან გაგრძელება.'],
   ['.meta .meta-row:nth-of-type(1) .meta-label', 'backend metrics endpoint-\u10D8\u10E1 \u10E1\u10E2\u10D0\u10E2\u10E3\u10E1\u10D8.'],
   ['.meta .meta-row:nth-of-type(2) .meta-label', 'snapshot \u10E8\u10D4\u10E5\u10DB\u10DC\u10D8\u10E1 \u10D3\u10E0\u10DD.'],
   ['.meta .meta-row:nth-of-type(3) .meta-label', 'UI refresh-\u10D8\u10E1 \u10D3\u10E0\u10DD.'],
   ['.meta .meta-row:nth-of-type(4) .meta-label', '\u10D0\u10E5\u10E2\u10D8\u10E3\u10E0\u10D8 API instance-\u10D4\u10D1\u10D8.'],
   ['.meta .meta-row:nth-of-type(5) .meta-label', '\u10D0\u10E5\u10E2\u10D8\u10E3\u10E0\u10D8 Worker instance-\u10D4\u10D1\u10D8.'],
+  ['#statusText', 'backend metrics endpoint-ის ამჟამინდელი მდგომარეობა.'],
+  ['#generatedAt', 'snapshot-ის შექმნის დრო backend-ზე.'],
+  ['#lastRefresh', 'ბოლო UI refresh-ის დრო ამ ბრაუზერში.'],
+  ['#apiInstanceCount', 'ამ snapshot-ში ნაპოვნი API instance-ების რაოდენობა.'],
+  ['#workerInstanceCount', 'ამ snapshot-ში ნაპოვნი Worker instance-ების რაოდენობა.'],
   ['.summary-grid .card:nth-of-type(1) h2', 'API ingress-\u10D8\u10E1 \u10DB\u10D0\u10E9\u10D5\u10D4\u10DC\u10D4\u10D1\u10DA\u10D4\u10D1\u10D8.'],
   ['.summary-grid .card:nth-of-type(2) h2', 'Raw worker-\u10D8\u10E1 \u10DB\u10D0\u10E9\u10D5\u10D4\u10DC\u10D4\u10D1\u10DA\u10D4\u10D1\u10D8.'],
   ['.summary-grid .card:nth-of-type(3) h2', 'Worker processor-\u10D8\u10E1 \u10DB\u10D0\u10E9\u10D5\u10D4\u10DC\u10D4\u10D1\u10DA\u10D4\u10D1\u10D8.'],
@@ -82,10 +91,10 @@ const staticTitles = [
   ['.queue-grid .card:nth-of-type(2) thead th:nth-of-type(1)', 'queue-\u10D8\u10E1 \u10E1\u10D0\u10EE\u10D4\u10DA\u10D8.'],
   ['.queue-grid .card:nth-of-type(2) thead th:nth-of-type(2)', 'queue pressure-\u10D8\u10E1 \u10E1\u10E2\u10D0\u10E2\u10E3\u10E1\u10D8.'],
   ['.queue-grid .card:nth-of-type(2) thead th:nth-of-type(3)', 'consumer-\u10D4\u10D1\u10D8\u10E1 \u10E0\u10D0\u10DD\u10D3\u10D4\u10DC\u10DD\u10D1\u10D0.'],
-  ['.queue-grid .card:nth-of-type(2) thead th:nth-of-type(4)', 'ready backlog.'],
-  ['.queue-grid .card:nth-of-type(2) thead th:nth-of-type(5)', 'unacked in-flight message-\u10D4\u10D1\u10D8.'],
-  ['.queue-grid .card:nth-of-type(2) thead th:nth-of-type(6)', 'publish \u10E1\u10D8\u10E9\u10E5\u10D0\u10E0\u10D4.'],
-  ['.queue-grid .card:nth-of-type(2) thead th:nth-of-type(7)', 'ack \u10E1\u10D8\u10E9\u10E5\u10D0\u10E0\u10D4.'],
+  ['.queue-grid .card:nth-of-type(2) thead th:nth-of-type(4)', 'ჯერ დაუმუშავებელი და რიგში მომლოდინე მესიჯები.'],
+  ['.queue-grid .card:nth-of-type(2) thead th:nth-of-type(5)', 'consumer-ს უკვე აღებული, მაგრამ ჯერ დაუდასტურებელი მესიჯები.'],
+  ['.queue-grid .card:nth-of-type(2) thead th:nth-of-type(6)', 'რიგში შეტანის მიმდინარე სიჩქარე წამში.'],
+  ['.queue-grid .card:nth-of-type(2) thead th:nth-of-type(7)', 'დამუშავებული მესიჯების დადასტურების სიჩქარე წამში.'],
   ['.instances-grid .card:nth-of-type(1) h2', 'API instance-\u10D4\u10D1\u10D8\u10E1 runtime snapshot.'],
   ['.instances-grid .card:nth-of-type(2) h2', 'Worker instance-\u10D4\u10D1\u10D8\u10E1 runtime snapshot.']
 ];
@@ -321,6 +330,9 @@ function renderDashboard(data) {
   const apiClientAborts = counter(api, 'api.webhook.client_aborts');
   const apiPublishFailures = counter(api, 'api.ingress.publish_failures');
   const apiExceptions = counter(api, 'api.webhook.exceptions');
+  const apiGarbageSeen = counter(api, 'api.webhook.garbage_messages_total');
+  const apiGarbageDropped = counter(api, 'api.webhook.garbage_messages_dropped');
+  const apiGarbageRequestsDropped = counter(api, 'api.webhook.garbage_requests_dropped');
   renderStatGrid(apiSummary, [
     {
       label: 'Requests',
@@ -373,6 +385,14 @@ function renderDashboard(data) {
       noteTooltip: tooltips.apiPublisherPool
     },
     {
+      label: 'Garbage dropped',
+      tooltip: tooltips.apiGarbageDropped,
+      value: fmtInt(apiGarbageDropped),
+      note: `${fmtInt(apiGarbageSeen)} seen - ${fmtInt(apiGarbageRequestsDropped)} req`,
+      noteTooltip: tooltips.apiGarbageDropped,
+      className: apiGarbageDropped > 0 ? 'warn' : 'info'
+    },
+    {
       label: 'Failures',
       tooltip: tooltips.apiFailures,
       value: fmtInt(apiClientAborts + apiPublishFailures + apiExceptions),
@@ -384,6 +404,8 @@ function renderDashboard(data) {
 
   const rawConsumed = counter(workers, 'worker.raw.envelopes_received');
   const rawNormalized = counter(workers, 'worker.raw.events_normalized');
+  const rawPublished = counter(workers, 'worker.raw.business_events_published');
+  const rawGarbageDropped = counter(workers, 'worker.raw.garbage_messages_dropped');
   const rawCycle = distribution(workers, 'worker.raw.cycle_ms');
   const rawBatch = distribution(workers, 'worker.raw.batch_size');
   const rawParallelism = gaugeMax(workers, 'worker.raw.parallelism');
@@ -408,12 +430,23 @@ function renderDashboard(data) {
       value: fmtMs(rawCycle.p95),
       note: `${fmtInt(counter(workers, 'worker.raw.failures'))} failures`,
       noteTooltip: tooltips.rawFailures
+    },
+    {
+      label: 'Garbage dropped',
+      tooltip: tooltips.rawGarbageDropped,
+      value: fmtInt(rawGarbageDropped),
+      note: `${fmtInt(rawPublished)} business published`,
+      noteTooltip: tooltips.rawBusinessPublished,
+      className: rawGarbageDropped > 0 ? 'warn' : 'info'
     }
   ]);
 
   const processorSeen = counter(workers, 'worker.processor.events_seen');
   const accepted = counter(workers, 'worker.processor.vote_accepted') + counter(workers, 'worker.processor.vote_accepted_reconciled');
   const ignored = counter(workers, 'worker.processor.ignored') + counter(workers, 'worker.processor.cooldown_ignored');
+  const cooldownAttempts = counter(workers, 'worker.processor.cooldown_attempts');
+  const cooldownMessageAttempts = counter(workers, 'worker.processor.cooldown_message_attempts');
+  const cooldownPostbackAttempts = counter(workers, 'worker.processor.cooldown_postback_attempts');
   const normalizedCycle = distribution(workers, 'worker.normalized.cycle_ms');
   renderStatGrid(processorSummary, [
     {
@@ -435,6 +468,14 @@ function renderDashboard(data) {
       value: fmtInt(ignored),
       note: `${fmtMs(normalizedCycle.p95)} cycle p95`,
       noteTooltip: tooltips.normalizedCycleP95
+    },
+    {
+      label: 'Cooldown attempts',
+      tooltip: tooltips.processorCooldownAttempts,
+      value: fmtInt(cooldownAttempts),
+      note: `msg ${fmtInt(cooldownMessageAttempts)} - pb ${fmtInt(cooldownPostbackAttempts)}`,
+      noteTooltip: tooltips.processorCooldownAttempts,
+      className: cooldownAttempts > 0 ? 'warn' : 'info'
     }
   ]);
 
@@ -534,4 +575,6 @@ pauseButton.addEventListener('click', () => {
 applyStaticTitles();
 applyTimer();
 refreshMetrics();
+
+
 

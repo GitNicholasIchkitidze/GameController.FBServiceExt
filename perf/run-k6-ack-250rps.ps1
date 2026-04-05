@@ -20,6 +20,7 @@ param(
     [string]$RawIngressQueueName = 'fbserviceext.raw.ingress',
     [string]$NormalizedEventQueueName = 'fbserviceext.normalized.events',
     [int]$QueueDrainTimeoutSeconds = 90,
+    [string]$ArtifactPrefix = 'ack-250rps',
     [switch]$SkipReadyCheck,
     [switch]$SkipQueueDrainCheck
 )
@@ -31,7 +32,7 @@ $solutionRoot = Split-Path -Parent $PSScriptRoot
 $scenarioPath = Join-Path $PSScriptRoot 'k6\scenarios\ack-250rps.js'
 $artifactRoot = Join-Path $solutionRoot 'artifacts\perf'
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$artifactDir = Join-Path $artifactRoot "ack-250rps-$timestamp"
+$artifactDir = Join-Path $artifactRoot "$ArtifactPrefix-$timestamp"
 $summaryPath = Join-Path $artifactDir 'k6-summary.json'
 $normalizedSummaryPath = Join-Path $artifactDir 'k6-summary.normalized.json'
 $normalizedSummaryTextPath = Join-Path $artifactDir 'k6-summary.normalized.txt'
@@ -205,6 +206,7 @@ $normalizedSummary = [pscustomobject]@{
         AckP99TargetMs = $AckP99Ms
         RequestTimeout = $RequestTimeout
         MessageText = $MessageText
+        ArtifactPrefix = $ArtifactPrefix
     }
     Verdict = [pscustomobject]@{
         K6Passed = ($k6ExitCode -eq 0)

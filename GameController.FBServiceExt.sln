@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -14,6 +14,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameController.FBServiceExt.Domain", "src\GameController.FBServiceExt.Domain\GameController.FBServiceExt.Domain.csproj", "{E0FF5F4B-55BA-44FE-8289-AFB8714C77A3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameController.FBServiceExt.Infrastructure", "src\GameController.FBServiceExt.Infrastructure\GameController.FBServiceExt.Infrastructure.csproj", "{8BB38E49-77C7-46E3-9B26-A8496ADEBD1B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameController.FBServiceExt.FakeFBForSimulate", "src\GameController.FBServiceExt.FakeFBForSimulate\GameController.FBServiceExt.FakeFBForSimulate.csproj", "{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
@@ -89,6 +91,18 @@ Global
 		{8BB38E49-77C7-46E3-9B26-A8496ADEBD1B}.Release|x64.Build.0 = Release|Any CPU
 		{8BB38E49-77C7-46E3-9B26-A8496ADEBD1B}.Release|x86.ActiveCfg = Release|Any CPU
 		{8BB38E49-77C7-46E3-9B26-A8496ADEBD1B}.Release|x86.Build.0 = Release|Any CPU
+		{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761}.Debug|x64.Build.0 = Debug|Any CPU
+		{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761}.Debug|x86.Build.0 = Debug|Any CPU
+		{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761}.Release|x64.ActiveCfg = Release|Any CPU
+		{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761}.Release|x64.Build.0 = Release|Any CPU
+		{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761}.Release|x86.ActiveCfg = Release|Any CPU
+		{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761}.Release|x86.Build.0 = Release|Any CPU
 		{9E492320-4C9B-4722-B7E8-B217C1870902}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9E492320-4C9B-4722-B7E8-B217C1870902}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9E492320-4C9B-4722-B7E8-B217C1870902}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -111,6 +125,11 @@ Global
 		{3B144A54-0DF3-4353-A26A-284BF87649BB} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{E0FF5F4B-55BA-44FE-8289-AFB8714C77A3} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{8BB38E49-77C7-46E3-9B26-A8496ADEBD1B} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{B4E8C16C-7B04-4A86-9E40-1F0C83E5A761} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{9E492320-4C9B-4722-B7E8-B217C1870902} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
+
+
+
+

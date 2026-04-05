@@ -6,22 +6,20 @@ namespace GameController.FBServiceExt.Infrastructure.Messaging;
 
 internal static class RabbitMqMessageSerializer
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.General);
+    public const string RawIngressBodyMessageType = "fbserviceext.raw-body.v1";
+    public const string RawIngressReceivedAtUnixMillisecondsHeader = "x-fbserviceext-received-at-unix-ms";
 
-    public static ReadOnlyMemory<byte> Serialize(RawWebhookEnvelope envelope)
-    {
-        return JsonSerializer.SerializeToUtf8Bytes(envelope, SerializerOptions);
-    }
+    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.General);
 
     public static ReadOnlyMemory<byte> Serialize(NormalizedMessengerEvent normalizedEvent)
     {
         return JsonSerializer.SerializeToUtf8Bytes(normalizedEvent, SerializerOptions);
     }
 
-    public static RawWebhookEnvelope DeserializeRawEnvelope(ReadOnlyMemory<byte> body)
+    public static RawWebhookEnvelope DeserializeLegacyRawEnvelope(ReadOnlyMemory<byte> body)
     {
         return JsonSerializer.Deserialize<RawWebhookEnvelope>(body.Span, SerializerOptions)
-            ?? throw new InvalidOperationException("RabbitMQ raw ingress payload could not be deserialized.");
+            ?? throw new InvalidOperationException("RabbitMQ legacy raw ingress payload could not be deserialized.");
     }
 
     public static NormalizedMessengerEvent DeserializeNormalizedEvent(ReadOnlyMemory<byte> body)

@@ -1,4 +1,4 @@
-const queryInput = document.getElementById('queryInput');
+﻿const queryInput = document.getElementById('queryInput');
 const limitSelect = document.getElementById('limitSelect');
 const refreshSelect = document.getElementById('refreshSelect');
 const refreshButton = document.getElementById('refreshButton');
@@ -30,6 +30,14 @@ function levelClass(levelName) {
   return 'level-info';
 }
 
+function normalizeSourceValue(value) {
+  const normalized = (value || '').trim();
+  if (!normalized || normalized === '-' || normalized === '--') {
+    return '';
+  }
+
+  return normalized;
+}
 function trimPrefix(value) {
   const prefix = 'GameController.FBServiceExt.';
   return value.startsWith(prefix) ? value.substring(prefix.length) : value;
@@ -56,12 +64,12 @@ function buildCallerSource(entry) {
 }
 
 function buildFallbackSource(entry) {
-  const sourceContext = trimPrefix((entry.sourceContext || '').trim());
+  const sourceContext = trimPrefix(entry.sourceContext || '');
   if (sourceContext) {
     return sourceContext;
   }
 
-  return (entry.source || '-').trim() || '-';
+  return normalizeSourceValue(entry.source || '') || '-';
 }
 
 function formatSource(entry) {

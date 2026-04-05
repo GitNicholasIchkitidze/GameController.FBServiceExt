@@ -1,0 +1,454 @@
+﻿<!doctype html>
+<html lang="ka">
+<head>
+  <meta charset="utf-8">
+  <title>FBServiceExt ხმის მიცემის ფლოუ</title>
+  <style>
+    @page { size: A4 landscape; margin: 10mm; }
+    :root {
+      --bg: #0c1218;
+      --panel: #111a24;
+      --panel-soft: #152131;
+      --border: #243445;
+      --text: #e8eef6;
+      --muted: #9cb0c5;
+      --trigger: #2cc59a;
+      --choice: #71a7ff;
+      --confirm: #ffbe5c;
+      --result: #ff7b72;
+      --config: #b58cff;
+      --shadow: 0 18px 40px rgba(0,0,0,.24);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Consolas, "Courier New", monospace;
+      background:
+        radial-gradient(circle at top left, rgba(44,197,154,.10), transparent 24%),
+        radial-gradient(circle at top right, rgba(113,167,255,.08), transparent 28%),
+        linear-gradient(180deg, #0b1016 0%, #0d141d 100%);
+      color: var(--text);
+    }
+    .page {
+      width: 1680px;
+      margin: 0 auto;
+      padding: 26px 30px 22px;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 34px;
+      letter-spacing: .02em;
+    }
+    .subtitle {
+      margin: 0 0 18px;
+      max-width: 1520px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.55;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .hero,
+    .baseline {
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(19,27,38,.96), rgba(15,22,31,.96));
+      box-shadow: var(--shadow);
+      padding: 16px 18px;
+    }
+    .hero-title,
+    .baseline-title {
+      font-size: 14px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 10px;
+    }
+    .hero strong {
+      color: #fff;
+      font-size: 18px;
+    }
+    .hero p,
+    .baseline p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(17,26,36,.92);
+      color: #c7d6e7;
+      font-size: 14px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+      box-shadow: 0 0 0 4px rgba(255,255,255,.03);
+    }
+    .trigger { background: var(--trigger); }
+    .choice { background: var(--choice); }
+    .confirm { background: var(--confirm); }
+    .result { background: var(--result); }
+    .config { background: var(--config); }
+    .stage {
+      margin-bottom: 18px;
+      border-radius: 26px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(16,24,34,.96), rgba(13,20,29,.98));
+      box-shadow: var(--shadow);
+      padding: 18px 18px 16px;
+    }
+    .stage-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .stage-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: .01em;
+    }
+    .stage-subtitle {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .flow {
+      display: flex;
+      align-items: stretch;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .step {
+      flex: 1 1 0;
+      min-height: 210px;
+      border-radius: 20px;
+      padding: 16px 16px 14px;
+      border: 1px solid currentColor;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      display: flex;
+      flex-direction: column;
+    }
+    .step.trigger-card { color: var(--trigger); }
+    .step.choice-card { color: var(--choice); }
+    .step.confirm-card { color: var(--confirm); }
+    .step.result-card { color: var(--result); }
+    .step.config-card { color: var(--config); }
+    .step h3 {
+      margin: 0 0 10px;
+      color: #f7fbff;
+      font-size: 20px;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .step p {
+      margin: 0 0 8px;
+      color: #c7d6e7;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      color: #eef4fb;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .ref {
+      margin-top: auto;
+      color: #9db6d2;
+      font-size: 11.5px;
+      line-height: 1.45;
+      border-top: 1px solid rgba(255,255,255,.10);
+      padding-top: 10px;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .arrow {
+      align-self: center;
+      flex: 0 0 28px;
+      color: #8ea6bf;
+      font-size: 28px;
+      text-align: center;
+      opacity: .9;
+    }
+    .branch-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 6px;
+    }
+    .mini {
+      min-height: 158px;
+    }
+    .config-strip {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .config-item {
+      border: 1px solid rgba(181,140,255,.35);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(56,34,91,.38), rgba(28,20,43,.55));
+      padding: 12px 14px;
+    }
+    .config-item strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #fff;
+      font-size: 14px;
+    }
+    .config-item span {
+      display: block;
+      color: #d9c9ff;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .notes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 10px;
+    }
+    .note {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px 16px;
+      background: rgba(18,25,35,.94);
+      color: #d1deeb;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .note strong { color: #fff; }
+    code {
+      color: #fff4c2;
+      background: rgba(255,255,255,.06);
+      padding: 1px 5px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>FBServiceExt ხმის მიცემის ბიზნეს ფლოუ</h1>
+    <p class="subtitle">მიმდინარე ოპერატორული ხედვა: <strong>GET_STARTED</strong> ხსნის კანდიდატების არჩევას, შემდეგი დაჭერა ქმნის დადასტურების გამოწვევას, სადაც სწორი ღილაკი რანდომულ პოზიციაზეა, და მხოლოდ სწორი დადასტურება დროში ქმნის მიღებულ ხმას და რთავს cooldown-ს.</p>
+
+    <div class="meta">
+      <div class="hero">
+        <div class="hero-title">რას აჩვენებს ეს დიაგრამა</div>
+        <p><strong>კანდიდატის არჩევა ჯერ ხმა არ არის.</strong> ბიზნეს ეფექტი იქმნება მხოლოდ მაშინ, როცა დადასტურების გამოწვევა წარმატებით სრულდება. ეს არის მიმდინარე ფლოუს მთავარი ანტი-ავტო-კლიკერი.</p>
+      </div>
+      <div class="baseline">
+        <div class="baseline-title">მიმდინარე runtime მოდელი</div>
+        <p>კონტენტი, დროები, cooldown, კარუსელის ბარათები და ღილაკების ტექსტები სრულად config-driven-ია. Messenger შეტყობინებებს worker აგზავნის <code>MetaMessengerClient</code>-ით.</p>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="chip"><span class="dot trigger"></span>ტრიგერი / გეითი</span>
+      <span class="chip"><span class="dot choice"></span>არჩევა / სელექცია</span>
+      <span class="chip"><span class="dot confirm"></span>დადასტურება / გამოწვევა</span>
+      <span class="chip"><span class="dot result"></span>ხმა მიღებულია / cooldown შედეგი</span>
+      <span class="chip"><span class="dot config"></span>config-driven დრო / კონტენტი</span>
+    </div>
+
+    <section class="stage">
+      <div class="stage-header">
+        <div class="stage-title">ეტაპი 1: ვოტის დაწყება და კანდიდატების კარუსელი</div>
+        <div class="stage-subtitle">შესვლა ვოტინგის ფლოუში</div>
+      </div>
+      <div class="flow">
+        <article class="step trigger-card">
+          <span class="eyebrow">ნაბიჯი 1</span>
+          <h3>იუზერი აგზავნის GET_STARTED</h3>
+          <p>შემოსული ტექსტი ემთხვევა ერთ-ერთ configured vote-start token-ს.</p>
+          <p>სწორედ ეს არის ის ტექსტი, რომელიც კანდიდატების კარუსელს ხსნის.</p>
+          <div class="ref">Config ref: <code>VotingWorkflow:VoteStartTokens</code><br>appsettings.json: L54-L58</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step trigger-card">
+          <span class="eyebrow">ნაბიჯი 2</span>
+          <h3>worker ამოწმებს token-ს და cooldown-ს</h3>
+          <p><code>ProcessMessageAsync()</code> ignore-ს უკეთებს არა-ბიზნეს ტექსტს და ადრე ჩერდება, თუ იუზერი ჯერ კიდევ cooldown-შია.</p>
+          <p>თუ cooldown აქტიურია, იუზერი იღებს შემდეგი დროის ტექსტს და კარუსელი არ იგზავნება.</p>
+          <div class="ref">Code ref: NormalizedEventProcessor.cs<br>ProcessMessageAsync(): L183-L274<br>Cooldown gate: L228-L234</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step choice-card">
+          <span class="eyebrow">ნაბიჯი 3</span>
+          <h3>ინახება <code>OptionsSent</code> session</h3>
+          <p>state machine გადადის <code>Idle → VoteRequested → OptionsSent</code>.</p>
+          <p>session ინახავს აქტიურ user scope-ს და options არჩევის expiry-ს.</p>
+          <div class="ref">State refs: L243-L244<br>Session save + metric: L246-L264</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step choice-card">
+          <span class="eyebrow">ნაბიჯი 4</span>
+          <h3>იგზავნება კანდიდატების კარუსელი</h3>
+          <p>worker აგებს Messenger generic template-ს <code>Candidates:Items</code>-დან.</p>
+          <p>ყველა card იღებს სურათს, display name-ს და ერთ postback ღილაკს.</p>
+          <div class="ref">TrySendCandidateCarouselAsync(): L825-L878<br>MetaMessengerClient.SendGenericTemplateAsync(): L66-L90</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step config-card">
+          <span class="eyebrow">შედეგი</span>
+          <h3>Messenger აჩვენებს კარუსელს</h3>
+          <p>თითო enabled კანდიდატზე იქმნება ერთი card, public image URL-ებით, რომლებიც იგება configured base URL-ით და asset folder-ით.</p>
+          <p>ეს არის პირველი ხილული operator-controlled voting surface.</p>
+          <div class="ref">BuildCandidateImageUrl(): L1310-L1374<br>Config refs: appsettings.json L91-L92, L131</div>
+        </article>
+      </div>
+      <div class="config-strip">
+        <div class="config-item"><strong>ტოკენები</strong><span><code>VotingWorkflow:VoteStartTokens</code> წყვეტს, რომელი incoming ტექსტი იწყებს voting flow-ს.</span></div>
+        <div class="config-item"><strong>კანდიდატები</strong><span><code>Candidates:Items</code>, <code>PublicBaseUrl</code> და <code>AssetBasePath</code> განსაზღვრავს კარუსელის კონტენტს და image URL-ებს.</span></div>
+        <div class="config-item"><strong>ღილაკის ტექსტი</strong><span><code>MessengerContent:CandidateVoteButtonTitleFormat</code> მართავს თითო carousel button-ის label-ს.</span></div>
+      </div>
+    </section>
+
+    <section class="stage">
+      <div class="stage-header">
+        <div class="stage-title">ეტაპი 2: კანდიდატის არჩევა და დადასტურების გამოწვევა</div>
+        <div class="stage-subtitle">ანტი-ავტო-კლიკერის ნაბიჯი</div>
+      </div>
+      <div class="flow">
+        <article class="step choice-card">
+          <span class="eyebrow">ნაბიჯი 5</span>
+          <h3>იუზერი აჭერს კანდიდატს</h3>
+          <p>carousel button აგზავნის postback-ს, სადაც <code>payload = candidate.Id</code>.</p>
+          <p>ეს ჯერ კიდევ არ ითვლება ხმად.</p>
+          <div class="ref">Source: carousel button payload</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step choice-card">
+          <span class="eyebrow">ნაბიჯი 6</span>
+          <h3>resolve-დება active session და candidate</h3>
+          <p><code>ProcessPostbackAsync()</code> ტვირთავს აქტიურ vote session-ს და payload-ით პოულობს კანდიდატს.</p>
+          <p>თუ active session არ არსებობს ან candidate უცნობია, event ignore-დება.</p>
+          <div class="ref">ProcessPostbackAsync(): L282-L517</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step confirm-card">
+          <span class="eyebrow">ნაბიჯი 7</span>
+          <h3>იქმნება <code>ConfirmationPending</code></h3>
+          <p>ფლოუ გადადის <code>CandidateSelected → ConfirmationPending</code>.</p>
+          <p>session უკვე ინახავს არჩეულ კანდიდატს და confirmation timeout window-ს.</p>
+          <div class="ref">Confirmation session build + save: L369-L385</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step confirm-card">
+          <span class="eyebrow">ნაბიჯი 8</span>
+          <h3>იგზავნება ერთ-ბარათიანი დადასტურების გამოწვევა</h3>
+          <p>worker აგზავნის ერთ candidate card-ს prompt ტექსტით და <strong>3 ღილაკით</strong>.</p>
+          <p>სწორი კანდიდატის label რანდომულად ნაწილდება პოზიციებზე, რომ blind auto-click რთული იყოს.</p>
+          <div class="ref">TrySendVoteConfirmationPromptAsync(): L891-L915<br>BuildVoteConfirmationButtons(): L1194-L1235</div>
+        </article>
+      </div>
+      <div class="branch-row">
+        <article class="step confirm-card mini">
+          <span class="eyebrow">არასწორი გზა</span>
+          <h3>არასწორი ღილაკი</h3>
+          <p>თუ იუზერი decoy confirmation button-ს დააჭერს, session იშლება და იგზავნება rejected ტექსტი.</p>
+          <div class="ref">Wrong confirmation branch: L423-L449</div>
+        </article>
+        <article class="step confirm-card mini">
+          <span class="eyebrow">ძალიან გვიან</span>
+          <h3>ვადაგასული დადასტურება</h3>
+          <p>თუ დრო ამოიწურა, backend reject-ს უკეთებს დადასტურებას და სთხოვს იუზერს თავიდან დაიწყოს კანდიდატების არჩევიდან.</p>
+          <div class="ref">HasSessionExpired(): L1306<br>HandleExpiredSessionAsync(): L767-L822</div>
+        </article>
+      </div>
+      <div class="config-strip">
+        <div class="config-item"><strong>დრო</strong><span><code>VotingWorkflow:ConfirmationTimeout</code> ახლა 120 წამია.</span></div>
+        <div class="config-item"><strong>პრომტის ტექსტი</strong><span><code>VoteConfirmationPromptFormat</code> აგებს ტექსტს “დაადასტურეთ არჩევანი N წამში”.</span></div>
+        <div class="config-item"><strong>ღილაკების რანდომიზაცია</strong><span><code>VoteConfirmationCorrectButtonTitleFormat</code> და <code>VoteConfirmationDecoyButtonTitles</code> კვებავს 3-ღილაკიან ანტი-ავტო-კლიკერის გამოწვევას.</span></div>
+      </div>
+    </section>
+
+    <section class="stage">
+      <div class="stage-header">
+        <div class="stage-title">ეტაპი 3: ხმა მიღებულია, cooldown და ხელახალი მცდელობა</div>
+        <div class="stage-subtitle">აქ იქმნება რეალური ბიზნეს ეფექტი</div>
+      </div>
+      <div class="flow">
+        <article class="step result-card">
+          <span class="eyebrow">ნაბიჯი 9</span>
+          <h3>მოდის სწორი დადასტურება</h3>
+          <p>postback payload ემთხვევა selected candidate-ის expected accept payload-ს.</p>
+          <p>მხოლოდ ეს branch ქმნის მიღებულ ხმას.</p>
+          <div class="ref">Accept path decision: L403-L417</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step result-card">
+          <span class="eyebrow">ნაბიჯი 10</span>
+          <h3><code>AcceptVoteAsync()</code></h3>
+          <p>state machine გადის confirmation-received, persisted, notified და ბოლოს cooldown-active მდგომარეობებზე.</p>
+          <p>cooldown timestamp სწორედ აქ ითვლება.</p>
+          <div class="ref">AcceptVoteAsync(): L627-L724</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step result-card">
+          <span class="eyebrow">ნაბიჯი 11</span>
+          <h3>ინახება ხმა და cooldown snapshot</h3>
+          <p><code>AcceptedVoteStore.TryAddAsync()</code> წერს ხმას, ხოლო session store ინახავს cooldown window-ს მომდევნო მცდელობებისთვის.</p>
+          <div class="ref">Accepted vote insert: L667<br>Cooldown snapshot save: L670-L684</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step result-card">
+          <span class="eyebrow">ნაბიჯი 12</span>
+          <h3>იგზავნება საბოლოო success ტექსტი</h3>
+          <p>იუზერი ხედავს, რომ ხმა მიღებულია და როდის შეძლებს შემდეგი ხმის მიცემას.</p>
+          <p>ეს არის წარმატებული vote-ის ხილული დასრულება.</p>
+          <div class="ref">TrySendVoteAcceptedMessageAsync(): L727-L741<br>BuildVoteAcceptedText(): L1237-L1248</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step result-card">
+          <span class="eyebrow">შემდეგი მცდელობა</span>
+          <h3>cooldown ბლოკავს ხელახლა ხმას</h3>
+          <p>თუ იუზერი cooldown-ის დროს ისევ ცდის, message და postback path ორივე ადრე ჩერდება და აგზავნის შემდეგი დროის ტექსტს.</p>
+          <div class="ref">Message cooldown branch: L228-L234<br>Postback cooldown branch: L325-L331<br>Cooldown text builder: L1250-L1279</div>
+        </article>
+      </div>
+      <div class="config-strip">
+        <div class="config-item"><strong>cooldown window</strong><span><code>VotingWorkflow:Cooldown</code> ახლა 5 წუთია და იწყება მხოლოდ სწორი confirmation-ის შემდეგ.</span></div>
+        <div class="config-item"><strong>success ტექსტი</strong><span><code>VoteAcceptedTextFormat</code> აკონტროლებს საბოლოო მესიჯს კანდიდატით და შემდეგი დასაშვები დროით.</span></div>
+        <div class="config-item"><strong>retry ტექსტი</strong><span><code>CooldownActiveTextFormat</code> და <code>CooldownTimeFormat</code> აგებს მესიჯს “ისევ სცადეთ HH:mm:ss-ის შემდეგ”.</span></div>
+      </div>
+    </section>
+
+    <div class="notes">
+      <div class="note"><strong>რა ითვლება რეალურ ხმად:</strong> carousel-დან კანდიდატის არჩევა მხოლოდ selection-ია. ბიზნეს vote იქმნება მხოლოდ მაშინ, როცა confirmation challenge დროში წარმატებით დასრულდება.</div>
+      <div class="note"><strong>countdown-ის ნიუანსი:</strong> Messenger generic/button template-ს შეუძლია აჩვენოს configured <code>120 წამი</code> როგორც static ტექსტი, მაგრამ native live ticking countdown bubble არ აქვს. რეალური enforcement მაინც backend session expiration-სა და cooldown logic-ში ხდება.</div>
+    </div>
+  </div>
+</body>
+</html>

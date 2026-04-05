@@ -1,4 +1,4 @@
-using GameController.FBServiceExt.Infrastructure.Data.Entities;
+﻿using GameController.FBServiceExt.Infrastructure.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace GameController.FBServiceExt.Infrastructure.Data;
@@ -39,13 +39,16 @@ internal sealed class FbServiceExtDbContext : DbContext
             entity.Property(item => item.CorrelationId).HasMaxLength(200).IsRequired();
             entity.Property(item => item.UserId).HasMaxLength(200).IsRequired();
             entity.Property(item => item.RecipientId).HasMaxLength(200).IsRequired();
+            entity.Property(item => item.ShowId).HasMaxLength(200).IsRequired();
             entity.Property(item => item.CandidateId).HasMaxLength(200).IsRequired();
             entity.Property(item => item.CandidateDisplayName).HasMaxLength(400).IsRequired();
             entity.Property(item => item.SourceEventId).HasMaxLength(200).IsRequired();
             entity.Property(item => item.Channel).HasMaxLength(50).IsRequired();
+            entity.Property(item => item.UserAccountName).HasMaxLength(400);
             entity.Property(item => item.RecordedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
             entity.HasIndex(item => item.SourceEventId).IsUnique();
             entity.HasIndex(item => new { item.UserId, item.ConfirmedAtUtc });
+            entity.HasIndex(item => new { item.ShowId, item.ConfirmedAtUtc });
         });
 
         base.OnModelCreating(modelBuilder);

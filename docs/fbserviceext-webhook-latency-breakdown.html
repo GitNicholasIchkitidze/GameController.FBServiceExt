@@ -1,182 +1,360 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>FBServiceExt Webhook Latency Breakdown</title>
+  <title>FBServiceExt Webhook ACK Latency Breakdown</title>
   <style>
     @page { size: A4 landscape; margin: 10mm; }
+    :root {
+      --border: #243445;
+      --text: #e8eef6;
+      --muted: #9cb0c5;
+      --low: #2ec7a1;
+      --mid: #ffbe5c;
+      --high: #ff7b72;
+      --blue: #71a7ff;
+      --shadow: 0 18px 40px rgba(0,0,0,.24);
+    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: Consolas, "Courier New", monospace;
-      background: #0d1117;
-      color: #e6edf3;
+      background:
+        radial-gradient(circle at top left, rgba(46,199,161,.08), transparent 24%),
+        radial-gradient(circle at top right, rgba(113,167,255,.08), transparent 28%),
+        linear-gradient(180deg, #0b1016 0%, #0d141d 100%);
+      color: var(--text);
     }
     .page {
-      width: 1560px;
+      width: 1680px;
       margin: 0 auto;
-      padding: 28px;
-      box-sizing: border-box;
+      padding: 26px 30px 22px;
     }
-    h1 { margin: 0 0 8px; font-size: 30px; }
-    .subtitle { margin: 0 0 18px; color: #9fb0c7; font-size: 16px; }
-    .legend { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
-    .tag {
+    h1 {
+      margin: 0 0 10px;
+      font-size: 34px;
+      letter-spacing: .02em;
+    }
+    .subtitle {
+      margin: 0 0 18px;
+      max-width: 1540px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.55;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .hero,
+    .baseline {
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(19,27,38,.96), rgba(15,22,31,.96));
+      box-shadow: var(--shadow);
+      padding: 16px 18px;
+    }
+    .hero-title,
+    .baseline-title {
+      font-size: 14px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 10px;
+    }
+    .hero p,
+    .baseline p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    .hero strong,
+    .baseline strong { color: #fff; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .chip {
       display: inline-flex;
-      gap: 8px;
       align-items: center;
-      padding: 8px 12px;
+      gap: 10px;
+      padding: 10px 14px;
       border-radius: 999px;
-      border: 1px solid #2b3647;
-      background: #141b24;
-      color: #c9d5e3;
+      border: 1px solid var(--border);
+      background: rgba(17,26,36,.92);
+      color: #c7d6e7;
       font-size: 14px;
     }
-    .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
-    .green { background: #2ec7a1; }
-    .amber { background: #ffb454; }
-    .red { background: #ff6b6b; }
-    svg {
-      width: 100%;
-      height: auto;
-      display: block;
-      border-radius: 22px;
-      border: 1px solid #263243;
-      background: linear-gradient(180deg, #121923 0%, #0f141b 100%);
-      box-shadow: 0 20px 40px rgba(0,0,0,.18);
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+      box-shadow: 0 0 0 4px rgba(255,255,255,.03);
     }
-    .notes {
-      margin-top: 18px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+    .green { background: var(--low); }
+    .amber { background: var(--mid); }
+    .red { background: var(--high); }
+    .blue { background: var(--blue); }
+    .stage {
+      margin-bottom: 18px;
+      border-radius: 26px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(16,24,34,.96), rgba(13,20,29,.98));
+      box-shadow: var(--shadow);
+      padding: 18px 18px 16px;
+    }
+    .stage-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
       gap: 16px;
+      margin-bottom: 16px;
     }
-    .note {
-      border: 1px solid #263243;
+    .stage-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: .01em;
+    }
+    .stage-subtitle {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .flow {
+      display: flex;
+      align-items: stretch;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .step {
+      flex: 1 1 0;
+      min-height: 260px;
+      border-radius: 20px;
+      padding: 16px 16px 14px;
+      border: 1px solid currentColor;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      display: flex;
+      flex-direction: column;
+    }
+    .step.low { color: var(--low); }
+    .step.mid { color: var(--mid); }
+    .step.high { color: var(--high); }
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      color: #eef4fb;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .step h3 {
+      margin: 0 0 10px;
+      color: #f7fbff;
+      font-size: 19px;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .step p {
+      margin: 0 0 8px;
+      color: #c7d6e7;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .risk {
+      margin: 6px 0 10px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .ref {
+      margin-top: auto;
+      color: #9db6d2;
+      font-size: 11.5px;
+      line-height: 1.45;
+      border-top: 1px solid rgba(255,255,255,.10);
+      padding-top: 10px;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .arrow {
+      align-self: center;
+      flex: 0 0 28px;
+      color: #8ea6bf;
+      font-size: 28px;
+      text-align: center;
+      opacity: .9;
+    }
+    .implications {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      margin-top: 8px;
+    }
+    .implication {
+      border: 1px solid var(--border);
       border-radius: 18px;
       padding: 14px 16px;
-      background: #121923;
-      color: #d4dfeb;
-      line-height: 1.55;
+      background: rgba(18,25,35,.94);
+      min-height: 170px;
+    }
+    .implication h3 {
+      margin: 0 0 10px;
+      font-size: 24px;
+    }
+    .implication.good h3 { color: var(--low); }
+    .implication.watch h3 { color: var(--mid); }
+    .implication.bad h3 { color: var(--high); }
+    .implication p {
+      margin: 0;
+      color: #d3deea;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .notes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 10px;
+    }
+    .note {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px 16px;
+      background: rgba(18,25,35,.94);
+      color: #d1deeb;
       font-size: 14px;
+      line-height: 1.6;
     }
     .note strong { color: #fff; }
+    code {
+      color: #fff4c2;
+      background: rgba(255,255,255,.06);
+      padding: 1px 5px;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
   <div class="page">
     <h1>FBServiceExt Webhook ACK Latency Breakdown</h1>
-    <p class="subtitle">Horizontal view of the awaited path before <strong>200 OK</strong>. Each block now includes the primary source file and line range so the performance discussion maps directly back to code.</p>
+    <p class="subtitle">Updated for the current architecture: payload inspection, request-level garbage and voting gates, a pub/sub-backed Redis voting snapshot, and pooled RabbitMQ raw publish all shape the path before <strong>HTTP 200</strong>. Some requests now short-circuit early, and some requests skip the voting gate lookup entirely, but business-relevant traffic still pays the publish cost before the ACK returns.</p>
 
-    <div class="legend">
-      <span class="tag"><span class="dot green"></span>Low risk / usually cheap</span>
-      <span class="tag"><span class="dot amber"></span>Medium risk / environment dependent</span>
-      <span class="tag"><span class="dot red"></span>High risk / can dominate p95-p99</span>
+    <div class="meta">
+      <div class="hero">
+        <div class="hero-title">Core Reading</div>
+        <p><strong>The ACK latency story is still mostly about stage 5.</strong> The earlier stages now do less work on the hot path: garbage requests can stop before queue publish, voting-disabled drops can come from an in-memory snapshot, and non-droppable traffic can skip the gate lookup entirely. Real business traffic still waits for RabbitMQ publish before the ACK returns.</p>
+      </div>
+      <div class="baseline">
+        <div class="baseline-title">Validated Baseline</div>
+        <p><strong>500 incoming events/sec for 5 minutes</strong> passed in the Performance profile, including <code>EventsPerRequest = 1 / 2 / 3</code>. That baseline is what this latency model now reflects.</p>
+      </div>
     </div>
 
-    <svg viewBox="0 0 1520 840" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Webhook ACK latency breakdown diagram with code references">
-      <defs>
-        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#7cc7ff" />
-        </marker>
-      </defs>
+    <div class="legend">
+      <span class="chip"><span class="dot green"></span>Low risk / usually cheap</span>
+      <span class="chip"><span class="dot amber"></span>Medium risk / environment dependent</span>
+      <span class="chip"><span class="dot red"></span>High risk / can dominate p95-p99</span>
+      <span class="chip"><span class="dot blue"></span>ACK path / still awaited</span>
+    </div>
 
-      <text x="48" y="56" font-size="24" font-weight="700" fill="#f8fbff">ACK Path (everything below happens before HTTP 200)</text>
-      <rect x="24" y="80" width="1470" height="360" rx="24" fill="#101821" stroke="#2b3647" />
+    <section class="stage">
+      <div class="stage-header">
+        <div class="stage-title">ACK Path</div>
+        <div class="stage-subtitle">Everything below happens before HTTP 200 is returned</div>
+      </div>
+      <div class="flow">
+        <article class="step low">
+          <span class="eyebrow">Step 1</span>
+          <h3>Body Read</h3>
+          <p>The controller reads <code>Request.Body</code> into a string and applies basic content-length safeguards.</p>
+          <p>This cost is mostly payload-size bound and usually small for Messenger traffic.</p>
+          <div class="risk">Latency Risk: LOW</div>
+          <div class="ref">Controllers/FacebookWebhooksController.cs<br>Receive(): L110-L116</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step low">
+          <span class="eyebrow">Step 2</span>
+          <h3>Payload Inspect</h3>
+          <p>The request is classified into postback, vote-start, <code>#forgetme</code>, or garbage.</p>
+          <p>This is a local JSON/token step that enables early drop before queue publish.</p>
+          <div class="risk">Latency Risk: LOW</div>
+          <div class="ref">Controller L118-L122<br>WebhookPayloadInspector.cs L8-L66<br>MessengerInboundClassifier.cs L38-L68</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step low">
+          <span class="eyebrow">Step 3</span>
+          <h3>Signature Check</h3>
+          <p>The controller validates <code>X-Hub-Signature-256</code> before allowing the request to continue.</p>
+          <p>This is pure CPU work and rejects bad requests before publish.</p>
+          <div class="risk">Latency Risk: LOW</div>
+          <div class="ref">Controllers/FacebookWebhooksController.cs<br>Receive(): L124-L145</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step mid">
+          <span class="eyebrow">Step 4</span>
+          <h3>Early Request Gates</h3>
+          <p>Garbage-only requests can return <code>200 OK</code> immediately without touching RabbitMQ.</p>
+          <p>If <code>VotingStarted = false</code>, droppable traffic can also return early. The gate now uses a pub/sub-backed in-memory snapshot with a 15-second TTL, and requests that cannot be dropped skip this lookup entirely.</p>
+          <div class="risk">Latency Risk: LOW to MEDIUM</div>
+          <div class="ref">Controller L156-L200<br>RedisVotingGateService.cs L33-L159</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step high">
+          <span class="eyebrow">Step 5</span>
+          <h3>Accept + Raw Publish</h3>
+          <p><code>AcceptAsync()</code> creates the lean raw envelope, rents a publisher channel from the pool, and calls the RabbitMQ raw publish path.</p>
+          <p>Request header copying was removed from this stage, so allocations and payload bytes are lower. Even so, this is still the main awaited network hop before the response can return.</p>
+          <div class="risk">Latency Risk: HIGH</div>
+          <div class="ref">Controller L200-L207<br>WebhookIngressService.cs L35-L59<br>RabbitMqRawIngressPublisher.cs L39-L115<br>RentChannelAsync(): L171-L199</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step low">
+          <span class="eyebrow">Step 6</span>
+          <h3>return Ok()</h3>
+          <p>The controller finally returns <code>HTTP 200</code>.</p>
+          <p>This step itself is cheap, but it only happens after the awaited stages above have finished.</p>
+          <div class="risk">Latency Risk: NONE</div>
+          <div class="ref">Controller L208-L216</div>
+        </article>
+      </div>
+    </section>
 
-      <g>
-        <rect x="42" y="132" width="215" height="245" rx="18" fill="#143127" stroke="#2ec7a1" stroke-width="2" />
-        <text x="149.5" y="164" text-anchor="middle" font-size="18" font-weight="700" fill="#f8fbff">1. Body Read</text>
-        <text x="149.5" y="191" text-anchor="middle" font-size="12" fill="#d9e3ee">Request.Body -> string</text>
-        <text x="149.5" y="219" text-anchor="middle" font-size="12" fill="#2ec7a1">Latency Risk: LOW</text>
-        <text x="149.5" y="244" text-anchor="middle" font-size="11" fill="#d9e3ee">Mostly payload-size bound</text>
-        <text x="149.5" y="262" text-anchor="middle" font-size="11" fill="#d9e3ee">Current payloads are small</text>
-        <text x="149.5" y="280" text-anchor="middle" font-size="11" fill="#d9e3ee">Usually cheap unless body</text>
-        <text x="149.5" y="296" text-anchor="middle" font-size="11" fill="#d9e3ee">gets large or request stalls</text>
-        <text x="149.5" y="326" text-anchor="middle" font-size="10" font-weight="700" fill="#f8fbff">Code Ref</text>
-        <text x="149.5" y="345" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Controllers/FacebookWebhooksController.cs</text>
-        <text x="149.5" y="361" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Receive(): L74-L76</text>
-      </g>
-
-      <g>
-        <rect x="281" y="132" width="215" height="245" rx="18" fill="#143127" stroke="#2ec7a1" stroke-width="2" />
-        <text x="388.5" y="164" text-anchor="middle" font-size="18" font-weight="700" fill="#f8fbff">2. Signature Check</text>
-        <text x="388.5" y="191" text-anchor="middle" font-size="12" fill="#d9e3ee">X-Hub-Signature-256</text>
-        <text x="388.5" y="219" text-anchor="middle" font-size="12" fill="#2ec7a1">Latency Risk: LOW</text>
-        <text x="388.5" y="244" text-anchor="middle" font-size="11" fill="#d9e3ee">Pure CPU work</text>
-        <text x="388.5" y="262" text-anchor="middle" font-size="11" fill="#d9e3ee">No external I/O</text>
-        <text x="388.5" y="280" text-anchor="middle" font-size="11" fill="#d9e3ee">Should stay stable under load</text>
-        <text x="388.5" y="326" text-anchor="middle" font-size="10" font-weight="700" fill="#f8fbff">Code Ref</text>
-        <text x="388.5" y="345" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Controllers/FacebookWebhooksController.cs</text>
-        <text x="388.5" y="361" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Receive(): L78-L89</text>
-      </g>
-
-      <g>
-        <rect x="520" y="132" width="215" height="245" rx="18" fill="#143127" stroke="#2ec7a1" stroke-width="2" />
-        <text x="627.5" y="164" text-anchor="middle" font-size="18" font-weight="700" fill="#f8fbff">3. Envelope Create</text>
-        <text x="627.5" y="191" text-anchor="middle" font-size="12" fill="#d9e3ee">AcceptWebhookCommand -></text>
-        <text x="627.5" y="207" text-anchor="middle" font-size="12" fill="#d9e3ee">RawWebhookEnvelope</text>
-        <text x="627.5" y="235" text-anchor="middle" font-size="12" fill="#2ec7a1">Latency Risk: LOW</text>
-        <text x="627.5" y="260" text-anchor="middle" font-size="11" fill="#d9e3ee">Object allocation only</text>
-        <text x="627.5" y="278" text-anchor="middle" font-size="11" fill="#d9e3ee">Negligible compared to I/O</text>
-        <text x="627.5" y="326" text-anchor="middle" font-size="10" font-weight="700" fill="#f8fbff">Code Ref</text>
-        <text x="627.5" y="345" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Application/Services/WebhookIngressService.cs</text>
-        <text x="627.5" y="361" text-anchor="middle" font-size="9.5" fill="#d9e3ee">AcceptAsync(): L32-L39</text>
-      </g>
-
-      <g>
-        <rect x="759" y="114" width="350" height="281" rx="18" fill="#352714" stroke="#ffb454" stroke-width="2" />
-        <text x="934" y="148" text-anchor="middle" font-size="20" font-weight="700" fill="#f8fbff">4. RabbitMQ Publish</text>
-        <text x="934" y="176" text-anchor="middle" font-size="12" fill="#f3dfc2">Ensure connection/channel + BasicPublish</text>
-        <text x="934" y="206" text-anchor="middle" font-size="13" fill="#ffb454">Latency Risk: MEDIUM to HIGH</text>
-        <text x="934" y="232" text-anchor="middle" font-size="11" fill="#f3dfc2">Dominant ACK-path risk in normal operation</text>
-        <text x="934" y="250" text-anchor="middle" font-size="11" fill="#f3dfc2">Sensitive to broker/network/warm-up/backpressure</text>
-        <text x="934" y="268" text-anchor="middle" font-size="11" fill="#f3dfc2">Earlier cold-start spikes came from this area</text>
-        <text x="934" y="286" text-anchor="middle" font-size="11" fill="#f3dfc2">Warm-up reduced first-hit cost</text>
-        <text x="934" y="322" text-anchor="middle" font-size="10" font-weight="700" fill="#f8fbff">Primary Code Ref</text>
-        <text x="934" y="341" text-anchor="middle" font-size="9.5" fill="#f3dfc2">Infrastructure/Messaging/RabbitMqRawIngressPublisher.cs</text>
-        <text x="934" y="357" text-anchor="middle" font-size="9.5" fill="#f3dfc2">PublishAsync(): L29-L55</text>
-        <text x="934" y="376" text-anchor="middle" font-size="9.5" fill="#f3dfc2">EnsureChannelAsync(): L99-L119</text>
-      </g>
-
-      <g>
-        <rect x="1133" y="132" width="175" height="245" rx="18" fill="#143127" stroke="#2ec7a1" stroke-width="2" />
-        <text x="1220.5" y="166" text-anchor="middle" font-size="18" font-weight="700" fill="#f8fbff">5. return Ok()</text>
-        <text x="1220.5" y="193" text-anchor="middle" font-size="12" fill="#d9e3ee">HTTP 200 returned</text>
-        <text x="1220.5" y="221" text-anchor="middle" font-size="12" fill="#2ec7a1">Latency Risk: NONE</text>
-        <text x="1220.5" y="246" text-anchor="middle" font-size="11" fill="#d9e3ee">But only after all awaited</text>
-        <text x="1220.5" y="262" text-anchor="middle" font-size="11" fill="#d9e3ee">steps above have finished</text>
-        <text x="1220.5" y="326" text-anchor="middle" font-size="10" font-weight="700" fill="#f8fbff">Code Ref</text>
-        <text x="1220.5" y="345" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Controllers/FacebookWebhooksController.cs</text>
-        <text x="1220.5" y="361" text-anchor="middle" font-size="9.5" fill="#d9e3ee">Receive(): L114-L115</text>
-      </g>
-
-      <g stroke="#7cc7ff" stroke-width="4" fill="none" marker-end="url(#arrow)">
-        <path d="M257 254 H281" />
-        <path d="M496 254 H520" />
-        <path d="M735 254 H759" />
-        <path d="M1109 254 H1133" />
-      </g>
-
-      <rect x="48" y="474" width="1440" height="274" rx="22" fill="#101821" stroke="#2b3647" />
-      <text x="72" y="510" font-size="24" font-weight="700" fill="#f8fbff">What this means in practice</text>
-
-      <text x="88" y="554" font-size="18" font-weight="700" fill="#2ec7a1">Good</text>
-      <text x="160" y="554" font-size="16" fill="#d9e3ee">~100-300 ms ACK is healthy for this architecture.</text>
-
-      <text x="88" y="592" font-size="18" font-weight="700" fill="#ffb454">Watch</text>
-      <text x="160" y="592" font-size="16" fill="#d9e3ee">~500 ms to 1 s deserves attention, especially if p95 or p99 drifts there.</text>
-
-      <text x="88" y="630" font-size="18" font-weight="700" fill="#ff6b6b">Bad</text>
-      <text x="160" y="630" font-size="16" fill="#d9e3ee">Multi-second ACKs are dangerous because retries and duplicate deliveries become likely.</text>
-
-      <text x="88" y="670" font-size="16" fill="#d9e3ee">Current example: 127.4902 ms is in the good zone.</text>
-      <text x="88" y="694" font-size="16" fill="#d9e3ee">Primary performance focus remains step 4, because it is the only awaited network hop before 200 OK.</text>
-      <text x="88" y="718" font-size="16" fill="#d9e3ee">The next thing to monitor is not a single request, but p95 / p99 under burst load.</text>
-    </svg>
+    <section class="stage">
+      <div class="stage-header">
+        <div class="stage-title">What This Means in Practice</div>
+        <div class="stage-subtitle">Operational interpretation of the ACK path</div>
+      </div>
+      <div class="implications">
+        <article class="implication good">
+          <h3>Good</h3>
+          <p>Sub-300 ms ACK remains a healthy target for this architecture. If your request returns in this zone, Meta retries are unlikely and the system is operating with comfortable headroom.</p>
+        </article>
+        <article class="implication watch">
+          <h3>Watch</h3>
+          <p>If p95 or p99 starts climbing, the first awaited place to inspect is stage 5, not the background workers. Stage 4 now removes more waste than before, but it cannot eliminate the RabbitMQ hop for real business traffic.</p>
+        </article>
+        <article class="implication bad">
+          <h3>Bad</h3>
+          <p>Multi-second ACKs are dangerous because retries and duplicate deliveries become likely. When that happens, publish-path contention or broker pressure usually surfaces before background business throughput becomes the visible issue.</p>
+        </article>
+      </div>
+    </section>
 
     <div class="notes">
-      <div class="note"><strong>Why await matters:</strong> <code>await AcceptAsync(...); return Ok();</code> means the response is sent only after publish completes. Async is non-blocking for the thread, but it still delays the HTTP response until the awaited work finishes.</div>
-      <div class="note"><strong>How to use the refs:</strong> each box points at the primary code location responsible for that latency segment. Step 4 intentionally includes both <code>PublishAsync()</code> and <code>EnsureChannelAsync()</code> because warm-up and channel creation both affect first-hit latency.</div>
+      <div class="note"><strong>Why <code>await</code> still matters:</strong> <code>await _webhookIngressService.AcceptAsync(...); return Ok();</code> means the response is returned only after the raw publish path finishes. Async is non-blocking for the thread, but it still delays the HTTP response until the awaited work completes.</div>
+      <div class="note"><strong>What changed from the earlier version:</strong> payload inspection and the <code>VotingStarted</code> gate now sit before RabbitMQ, the gate is served from a pub/sub-backed in-memory snapshot, non-droppable traffic skips that lookup, and unused request-header copying was removed from the raw ingress envelope. These changes make the ACK path cheaper, but they do not remove the raw publish step from real business traffic.</div>
     </div>
   </div>
 </body>

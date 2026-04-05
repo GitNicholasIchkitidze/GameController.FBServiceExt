@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\GameController.FBServiceExt.Application\GameController.FBServiceExt.Application.csproj" SkipGetTargetFrameworkProperties="true" />
     <ProjectReference Include="..\..\src\GameController.FBServiceExt.Domain\GameController.FBServiceExt.Domain.csproj" SkipGetTargetFrameworkProperties="true" />
+    <ProjectReference Include="..\..\src\GameController.FBServiceExt.Infrastructure\GameController.FBServiceExt.Infrastructure.csproj" SkipGetTargetFrameworkProperties="true" />
     <ProjectReference Include="..\..\src\GameController.FBServiceExt\GameController.FBServiceExt.csproj" SkipGetTargetFrameworkProperties="true" />
   </ItemGroup>
 

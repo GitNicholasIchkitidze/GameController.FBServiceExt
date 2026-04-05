@@ -1,4 +1,4 @@
-{
+﻿{
     "$schema":  "http://json.schemastore.org/launchsettings.json",
     "iisSettings":  {
                         "windowsAuthentication":  false,
@@ -9,23 +9,35 @@
                                        }
                     },
     "profiles":  {
-                     "http":  {
-                                  "commandName":  "Project",
-                                  "dotnetRunMessages":  true,
-                                  "launchBrowser":  true,
-                                  "launchUrl":  "dev/logs",
-                                  "applicationUrl":  "http://localhost:5277",
-                                  "environmentVariables":  {
-                                                               "ASPNETCORE_ENVIRONMENT":  "Development"
-                                                           }
-                              },
+                     "Development":  {
+                                         "commandName":  "Project",
+                                         "dotnetRunMessages":  true,
+                                         "launchBrowser":  true,
+                                         "launchUrl":  "dev/metrics",
+                                         "applicationUrl":  "http://localhost:5277",
+                                         "environmentVariables":  {
+                                                                      "ASPNETCORE_ENVIRONMENT":  "Development",
+                                                                      "DOTNET_ENVIRONMENT":  "Development"
+                                                                  }
+                                     },
                      "IIS Express":  {
                                          "commandName":  "IISExpress",
                                          "launchBrowser":  true,
-                                         "launchUrl":  "dev/logs",
+                                         "launchUrl":  "dev/metrics",
                                          "environmentVariables":  {
                                                                       "ASPNETCORE_ENVIRONMENT":  "Development"
                                                                   }
-                                     }
+                                     },
+                     "Simulator":  {
+                                       "commandName":  "Project",
+                                       "dotnetRunMessages":  true,
+                                       "launchBrowser":  true,
+                                       "launchUrl":  "dev/metrics",
+                                       "applicationUrl":  "http://localhost:5277",
+                                       "environmentVariables":  {
+                                                                    "ASPNETCORE_ENVIRONMENT":  "Simulator",
+                                                                    "DOTNET_ENVIRONMENT":  "Simulator"
+                                                                }
+                                   }
                  }
 }

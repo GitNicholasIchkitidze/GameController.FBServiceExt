@@ -185,3 +185,102 @@ Each monitored stress run writes files into:
 - during monitored stress runs, `MessagesUnacknowledged` should stay bounded and drain after load stops
 
 
+
+## Real outbound smoke
+
+Use this when you want real Meta Graph API outbound delivery at a small verification rate.
+
+```powershell
+.\perf\run-real-outbound-smoke.bat
+```
+
+Defaults:
+
+- `2 req/sec`
+- `120s`
+- `EventsPerRequest=1`
+- real outbound enabled via `PerformanceRealOutbound`
+- K6 artifacts under `real-outbound-smoke-*`
+
+Custom example:
+
+```powershell
+.\perf\run-real-outbound-smoke.bat 3 180s 1
+```
+
+## Real outbound soak
+
+Use this when you want a longer real Meta Graph API characterization run without the no-op Messenger client.
+
+```powershell
+.\perf\run-real-outbound-soak.bat
+```
+
+Defaults:
+
+- `5 req/sec`
+- `600s`
+- `EventsPerRequest=1`
+- real outbound enabled via `PerformanceRealOutbound`
+- K6 artifacts under `real-outbound-soak-*`
+
+Custom example:
+
+```powershell
+.\perf\run-real-outbound-soak.bat 8 900s 1
+```
+
+## Real outbound notes
+
+`Performance` uses `MetaMessenger.UseNoOpClient=true` so internal pipeline perf is isolated from Meta Graph API.
+
+`PerformanceRealOutbound` keeps the same worker tuning but turns the real Messenger client back on.
+
+New outbound transport metrics now include:
+
+- `worker.outbound.messenger.attempts`
+- `worker.outbound.messenger.transport_success`
+- `worker.outbound.messenger.transport_failures`
+- `worker.outbound.messenger.timeouts`
+- `worker.outbound.messenger.http_2xx`
+- `worker.outbound.messenger.http_4xx`
+- `worker.outbound.messenger.http_5xx`
+- `worker.outbound.messenger.http_429`
+- `worker.outbound.messenger.rate_limited`
+- `worker.outbound.messenger.policy_denied`
+- `worker.outbound.messenger.http_ms`
+
+
+## Fake Facebook voting cycle
+
+Use this when you want K6 virtual users to behave like fake Messenger users instead of only sending inbound webhook posts.
+
+Default command:
+
+`powershell
+.\perf\run-fake-fb-voting-cycle.bat
+` 
+
+Defaults:
+
+- 200 fake users
+- 600s duration
+- 60s cooldown between completed vote cycles
+- 30s confirmation timeout from the PerformanceFakeFb worker profile
+- fake outbound captured through http://127.0.0.1:5277/fake-meta`r
+
+Each virtual user loops through:
+
+- GET_STARTED`r
+- waits for outbound carousel
+- picks a random candidate
+- waits for outbound confirmation prompt
+- clicks the correct confirmation button
+- waits for the final accepted message
+- sleeps for cooldown and repeats
+
+Artifacts are written under:
+
+- rtifacts/perf/fake-fb-voting-cycle-<timestamp>/...`r
+- rtifacts/perf/fake-fb-voting-cycle-monitor-<timestamp>/rabbitmq-monitor/...`r
+

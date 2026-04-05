@@ -1,4 +1,5 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
+using GameController.FBServiceExt.Application.Exceptions;
 using GameController.FBServiceExt.Application.Abstractions.Messaging;
 using GameController.FBServiceExt.Application.Abstractions.Observability;
 using GameController.FBServiceExt.Application.Abstractions.Processing;
@@ -71,6 +72,15 @@ public sealed class NormalizedEventProcessorWorker : BackgroundService
             {
                 break;
             }
+            catch (RetryableProcessingException ex)
+            {
+                stopwatch.Stop();
+                _runtimeMetricsCollector.Increment("worker.normalized.failures");
+                _runtimeMetricsCollector.ObserveDuration("worker.normalized.cycle_ms", stopwatch.Elapsed.TotalMilliseconds);
+                _logger.LogWarning(ex, "Normalized event processing will retry after transient contention. LoopId: {LoopId}", loopId);
+                await SafeAbandonAsync(lease, ex);
+                await DelayBeforeRetryAsync(stoppingToken);
+            }
             catch (Exception ex)
             {
                 stopwatch.Stop();
@@ -111,3 +121,5 @@ public sealed class NormalizedEventProcessorWorker : BackgroundService
         }
     }
 }
+
+

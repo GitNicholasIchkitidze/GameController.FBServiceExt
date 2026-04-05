@@ -16,7 +16,6 @@ public sealed class RawWebhookNormalizerTests
             "facebook-messenger",
             "req-1",
             DateTime.UtcNow,
-            new Dictionary<string, string[]>(),
             payload);
 
         var normalizer = new RawWebhookNormalizer();

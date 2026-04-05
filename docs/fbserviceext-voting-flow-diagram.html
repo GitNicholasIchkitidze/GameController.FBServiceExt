@@ -1,0 +1,455 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FBServiceExt Voting Flow</title>
+  <style>
+    @page { size: A4 landscape; margin: 10mm; }
+    :root {
+      --bg: #0c1218;
+      --panel: #111a24;
+      --panel-soft: #152131;
+      --border: #243445;
+      --text: #e8eef6;
+      --muted: #9cb0c5;
+      --trigger: #2cc59a;
+      --choice: #71a7ff;
+      --confirm: #ffbe5c;
+      --result: #ff7b72;
+      --config: #b58cff;
+      --shadow: 0 18px 40px rgba(0,0,0,.24);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Consolas, "Courier New", monospace;
+      background:
+        radial-gradient(circle at top left, rgba(44,197,154,.10), transparent 24%),
+        radial-gradient(circle at top right, rgba(113,167,255,.08), transparent 28%),
+        linear-gradient(180deg, #0b1016 0%, #0d141d 100%);
+      color: var(--text);
+    }
+    .page {
+      width: 1680px;
+      margin: 0 auto;
+      padding: 26px 30px 22px;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 34px;
+      letter-spacing: .02em;
+    }
+    .subtitle {
+      margin: 0 0 18px;
+      max-width: 1520px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.55;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .hero,
+    .baseline {
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(19,27,38,.96), rgba(15,22,31,.96));
+      box-shadow: var(--shadow);
+      padding: 16px 18px;
+    }
+    .hero-title,
+    .baseline-title {
+      font-size: 14px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 10px;
+    }
+    .hero strong {
+      color: #fff;
+      font-size: 18px;
+    }
+    .hero p,
+    .baseline p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(17,26,36,.92);
+      color: #c7d6e7;
+      font-size: 14px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+      box-shadow: 0 0 0 4px rgba(255,255,255,.03);
+    }
+    .trigger { background: var(--trigger); }
+    .choice { background: var(--choice); }
+    .confirm { background: var(--confirm); }
+    .result { background: var(--result); }
+    .config { background: var(--config); }
+    .stage {
+      margin-bottom: 18px;
+      border-radius: 26px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(16,24,34,.96), rgba(13,20,29,.98));
+      box-shadow: var(--shadow);
+      padding: 18px 18px 16px;
+    }
+    .stage-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .stage-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: .01em;
+    }
+    .stage-subtitle {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .flow {
+      display: flex;
+      align-items: stretch;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .step {
+      flex: 1 1 0;
+      min-height: 210px;
+      border-radius: 20px;
+      padding: 16px 16px 14px;
+      border: 1px solid currentColor;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      display: flex;
+      flex-direction: column;
+    }
+    .step.trigger-card { color: var(--trigger); }
+    .step.choice-card { color: var(--choice); }
+    .step.confirm-card { color: var(--confirm); }
+    .step.result-card { color: var(--result); }
+    .step.config-card { color: var(--config); }
+    .step h3 {
+      margin: 0 0 10px;
+      color: #f7fbff;
+      font-size: 20px;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .step p {
+      margin: 0 0 8px;
+      color: #c7d6e7;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      color: #eef4fb;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .ref {
+      margin-top: auto;
+      color: #9db6d2;
+      font-size: 11.5px;
+      line-height: 1.45;
+      border-top: 1px solid rgba(255,255,255,.10);
+      padding-top: 10px;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .arrow {
+      align-self: center;
+      flex: 0 0 28px;
+      color: #8ea6bf;
+      font-size: 28px;
+      text-align: center;
+      opacity: .9;
+    }
+    .branch-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 6px;
+    }
+    .mini {
+      min-height: 158px;
+    }
+    .config-strip {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .config-item {
+      border: 1px solid rgba(181,140,255,.35);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(56,34,91,.38), rgba(28,20,43,.55));
+      padding: 12px 14px;
+    }
+    .config-item strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #fff;
+      font-size: 14px;
+    }
+    .config-item span {
+      display: block;
+      color: #d9c9ff;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .notes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 10px;
+    }
+    .note {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px 16px;
+      background: rgba(18,25,35,.94);
+      color: #d1deeb;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .note strong { color: #fff; }
+    code {
+      color: #fff4c2;
+      background: rgba(255,255,255,.06);
+      padding: 1px 5px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>FBServiceExt Voting Business Flow</h1>
+    <p class="subtitle">Readable operator view of the current vote path: <strong>GET_STARTED</strong> opens candidate selection, the next tap creates a confirmation challenge with the correct button randomized, and only the correct confirmation inside the time window creates a persisted vote and starts cooldown.</p>
+
+    <div class="meta">
+      <div class="hero">
+        <div class="hero-title">What This Diagram Shows</div>
+        <p><strong>Candidate selection itself is not a vote.</strong> The business effect happens only after the confirmation challenge succeeds. This is the core anti-auto-clicker mechanism in the current flow.</p>
+      </div>
+      <div class="baseline">
+        <div class="baseline-title">Current Runtime Shape</div>
+        <p>Content, timeouts, cooldown, carousel cards, and button labels are all config-driven. Messenger messages are sent from the worker through <code>MetaMessengerClient</code>.</p>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="chip"><span class="dot trigger"></span>Trigger / gating</span>
+      <span class="chip"><span class="dot choice"></span>Choice / selection</span>
+      <span class="chip"><span class="dot confirm"></span>Confirmation / challenge</span>
+      <span class="chip"><span class="dot result"></span>Vote accepted / cooldown result</span>
+      <span class="chip"><span class="dot config"></span>Config driven timing / content</span>
+    </div>
+
+    <section class="stage">
+      <div class="stage-header">
+        <div class="stage-title">Stage 1: Vote Start and Candidate Carousel</div>
+        <div class="stage-subtitle">Entry into the voting flow</div>
+      </div>
+      <div class="flow">
+        <article class="step trigger-card">
+          <span class="eyebrow">Step 1</span>
+          <h3>User sends GET_STARTED</h3>
+          <p>The inbound message matches one of the configured vote-start tokens.</p>
+          <p>This is the only text that opens the candidate carousel flow.</p>
+          <div class="ref">Config ref: <code>VotingWorkflow:VoteStartTokens</code><br>appsettings.json: L54-L58</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step trigger-card">
+          <span class="eyebrow">Step 2</span>
+          <h3>Worker checks token and cooldown</h3>
+          <p><code>ProcessMessageAsync()</code> ignores non-business text and stops early if the user is still in cooldown.</p>
+          <p>If cooldown is active, the user gets a friendly retry-time message instead of a carousel.</p>
+          <div class="ref">Code ref: NormalizedEventProcessor.cs<br>ProcessMessageAsync(): L183-L274<br>Cooldown gate: L228-L234</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step choice-card">
+          <span class="eyebrow">Step 3</span>
+          <h3>Save <code>OptionsSent</code> session</h3>
+          <p>The state machine moves <code>Idle → VoteRequested → OptionsSent</code>.</p>
+          <p>The session stores the active user scope and expiry for option picking.</p>
+          <div class="ref">State refs: L243-L244<br>Session save + metric: L246-L264</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step choice-card">
+          <span class="eyebrow">Step 4</span>
+          <h3>Send candidate carousel</h3>
+          <p>The worker builds a Messenger generic template from <code>Candidates:Items</code>.</p>
+          <p>Each card gets image, display name, and one postback button.</p>
+          <div class="ref">TrySendCandidateCarouselAsync(): L825-L878<br>MetaMessengerClient.SendGenericTemplateAsync(): L66-L90</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step config-card">
+          <span class="eyebrow">Result</span>
+          <h3>Messenger shows the carousel</h3>
+          <p>One card per enabled candidate, using public image URLs built from the configured base URL and asset folder.</p>
+          <p>This is the first visible operator-controlled voting surface.</p>
+          <div class="ref">BuildCandidateImageUrl(): L1310-L1374<br>Config refs: appsettings.json L91-L92, L131</div>
+        </article>
+      </div>
+      <div class="config-strip">
+        <div class="config-item"><strong>Tokens</strong><span><code>VotingWorkflow:VoteStartTokens</code> decides which incoming text starts voting.</span></div>
+        <div class="config-item"><strong>Candidates</strong><span><code>Candidates:Items</code>, <code>PublicBaseUrl</code>, and <code>AssetBasePath</code> define the carousel content and image URLs.</span></div>
+        <div class="config-item"><strong>Button text</strong><span><code>MessengerContent:CandidateVoteButtonTitleFormat</code> controls the label on each carousel button.</span></div>
+      </div>
+    </section>
+
+    <section class="stage">
+      <div class="stage-header">
+        <div class="stage-title">Stage 2: Candidate Selection and Confirmation Challenge</div>
+        <div class="stage-subtitle">The anti-auto-clicker step</div>
+      </div>
+      <div class="flow">
+        <article class="step choice-card">
+          <span class="eyebrow">Step 5</span>
+          <h3>User taps a candidate</h3>
+          <p>The carousel button sends a postback where <code>payload = candidate.Id</code>.</p>
+          <p>This still does not count as a vote.</p>
+          <div class="ref">Source: carousel button payload</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step choice-card">
+          <span class="eyebrow">Step 6</span>
+          <h3>Resolve active session and candidate</h3>
+          <p><code>ProcessPostbackAsync()</code> loads the active vote session and finds the candidate by payload.</p>
+          <p>If there is no active session or the candidate is unknown, the event is ignored.</p>
+          <div class="ref">ProcessPostbackAsync(): L282-L517</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step confirm-card">
+          <span class="eyebrow">Step 7</span>
+          <h3>Create <code>ConfirmationPending</code></h3>
+          <p>The flow moves <code>CandidateSelected → ConfirmationPending</code>.</p>
+          <p>The session now stores the selected candidate and the confirmation timeout window.</p>
+          <div class="ref">Confirmation session build + save: L369-L385</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step confirm-card">
+          <span class="eyebrow">Step 8</span>
+          <h3>Send one-card confirmation challenge</h3>
+          <p>The worker sends a single candidate card with prompt text and <strong>3 buttons</strong>.</p>
+          <p>The correct candidate label is randomized across positions to reduce blind auto-clicking.</p>
+          <div class="ref">TrySendVoteConfirmationPromptAsync(): L891-L915<br>BuildVoteConfirmationButtons(): L1194-L1235</div>
+        </article>
+      </div>
+      <div class="branch-row">
+        <article class="step confirm-card mini">
+          <span class="eyebrow">Wrong path</span>
+          <h3>Wrong button</h3>
+          <p>If the user presses a decoy confirmation button, the session is removed and a rejected text is sent.</p>
+          <div class="ref">Wrong confirmation branch: L423-L449</div>
+        </article>
+        <article class="step confirm-card mini">
+          <span class="eyebrow">Too late</span>
+          <h3>Expired confirmation</h3>
+          <p>If the time window expires, the backend rejects the confirmation and asks the user to restart from the candidate list.</p>
+          <div class="ref">HasSessionExpired(): L1306<br>HandleExpiredSessionAsync(): L767-L822</div>
+        </article>
+      </div>
+      <div class="config-strip">
+        <div class="config-item"><strong>Timeout</strong><span><code>VotingWorkflow:ConfirmationTimeout</code> is currently 120 seconds.</span></div>
+        <div class="config-item"><strong>Prompt text</strong><span><code>VoteConfirmationPromptFormat</code> builds the “confirm in N seconds” message shown above the image.</span></div>
+        <div class="config-item"><strong>Button randomization</strong><span><code>VoteConfirmationCorrectButtonTitleFormat</code> and <code>VoteConfirmationDecoyButtonTitles</code> feed the 3-button anti-auto-clicker challenge.</span></div>
+      </div>
+    </section>
+
+    <section class="stage">
+      <div class="stage-header">
+        <div class="stage-title">Stage 3: Vote Accepted, Cooldown, and Retry Handling</div>
+        <div class="stage-subtitle">This is where the business effect happens</div>
+      </div>
+      <div class="flow">
+        <article class="step result-card">
+          <span class="eyebrow">Step 9</span>
+          <h3>Correct confirmation arrives</h3>
+          <p>The postback payload matches the expected accept payload for the selected candidate.</p>
+          <p>Only this branch can create an accepted vote.</p>
+          <div class="ref">Accept path decision: L403-L417</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step result-card">
+          <span class="eyebrow">Step 10</span>
+          <h3><code>AcceptVoteAsync()</code></h3>
+          <p>The state machine advances through confirmation-received, persisted, notified, and finally cooldown-active.</p>
+          <p>The cooldown timestamp is computed here.</p>
+          <div class="ref">AcceptVoteAsync(): L627-L724</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step result-card">
+          <span class="eyebrow">Step 11</span>
+          <h3>Persist vote and cooldown snapshot</h3>
+          <p><code>AcceptedVoteStore.TryAddAsync()</code> records the vote, and the session store keeps the cooldown window for future attempts.</p>
+          <div class="ref">Accepted vote insert: L667<br>Cooldown snapshot save: L670-L684</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step result-card">
+          <span class="eyebrow">Step 12</span>
+          <h3>Send final success message</h3>
+          <p>The user sees that the vote was accepted and when the next allowed vote time starts.</p>
+          <p>This is the visible completion of a successful vote.</p>
+          <div class="ref">TrySendVoteAcceptedMessageAsync(): L727-L741<br>BuildVoteAcceptedText(): L1237-L1248</div>
+        </article>
+        <div class="arrow">→</div>
+        <article class="step result-card">
+          <span class="eyebrow">Later retry</span>
+          <h3>Cooldown blocks immediate re-vote</h3>
+          <p>If the user tries again during cooldown, both message and postback paths stop early and send the retry-time message.</p>
+          <div class="ref">Message cooldown branch: L228-L234<br>Postback cooldown branch: L325-L331<br>Cooldown text builder: L1250-L1279</div>
+        </article>
+      </div>
+      <div class="config-strip">
+        <div class="config-item"><strong>Cooldown window</strong><span><code>VotingWorkflow:Cooldown</code> is currently 5 minutes and starts only after a correct confirmation.</span></div>
+        <div class="config-item"><strong>Success text</strong><span><code>VoteAcceptedTextFormat</code> controls the final acceptance message with candidate and next allowed time.</span></div>
+        <div class="config-item"><strong>Retry text</strong><span><code>CooldownActiveTextFormat</code> plus <code>CooldownTimeFormat</code> build the “try again after HH:mm:ss” message.</span></div>
+      </div>
+    </section>
+
+    <div class="notes">
+      <div class="note"><strong>What actually counts as a vote:</strong> the candidate tap from the carousel is only a selection. The business vote is created only after the confirmation challenge succeeds inside the timeout window.</div>
+      <div class="note"><strong>Countdown nuance:</strong> Messenger generic/button templates can show the configured <code>120 seconds</code> as static text, but they do not provide a native live ticking countdown bubble. Real enforcement still happens in backend session expiration and cooldown logic.</div>
+    </div>
+  </div>
+</body>
+</html>
+

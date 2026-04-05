@@ -1,3 +1,4 @@
+using System.Text;
 using System.Threading.Channels;
 using GameController.FBServiceExt.Application.Abstractions.Messaging;
 using GameController.FBServiceExt.Application.Contracts.RawIngress;
@@ -124,7 +125,7 @@ internal sealed class RabbitMqRawIngressConsumer : IRawIngressConsumer, IAsyncDi
 
         try
         {
-            var payload = RabbitMqMessageSerializer.DeserializeRawEnvelope(eventArgs.Body.ToArray());
+            var payload = CreateEnvelope(eventArgs);
             var lease = new RabbitMqMessageLease<RawWebhookEnvelope>(payload, _channel, eventArgs.DeliveryTag);
             await _deliveries.Writer.WriteAsync(lease, CancellationToken.None);
         }
@@ -134,7 +135,77 @@ internal sealed class RabbitMqRawIngressConsumer : IRawIngressConsumer, IAsyncDi
             await _channel.BasicNackAsync(eventArgs.DeliveryTag, multiple: false, requeue: false, CancellationToken.None);
         }
     }
+
+    private static RawWebhookEnvelope CreateEnvelope(BasicDeliverEventArgs eventArgs)
+    {
+        var properties = eventArgs.BasicProperties;
+        if (!string.Equals(properties.Type, RabbitMqMessageSerializer.RawIngressBodyMessageType, StringComparison.Ordinal))
+        {
+            return RabbitMqMessageSerializer.DeserializeLegacyRawEnvelope(eventArgs.Body);
+        }
+
+        var envelopeId = TryParseEnvelopeId(properties.MessageId)
+            ?? throw new InvalidOperationException("Raw ingress message did not include a valid message id envelope identifier.");
+
+        var requestId = properties.CorrelationId ?? string.Empty;
+        var source = string.IsNullOrWhiteSpace(properties.AppId) ? "unknown" : properties.AppId;
+        var receivedAtUtc = ResolveReceivedAtUtc(properties);
+        var body = Encoding.UTF8.GetString(eventArgs.Body.Span);
+
+        return new RawWebhookEnvelope(
+            envelopeId,
+            source,
+            requestId,
+            receivedAtUtc,
+            body);
+    }
+
+    private static Guid? TryParseEnvelopeId(string? messageId)
+    {
+        if (string.IsNullOrWhiteSpace(messageId))
+        {
+            return null;
+        }
+
+        return Guid.TryParse(messageId, out var envelopeId) ? envelopeId : null;
+    }
+
+    private static DateTime ResolveReceivedAtUtc(IReadOnlyBasicProperties properties)
+    {
+        if (properties.Headers is not null &&
+            properties.Headers.TryGetValue(RabbitMqMessageSerializer.RawIngressReceivedAtUnixMillisecondsHeader, out var value) &&
+            TryReadUnixMilliseconds(value, out var unixMilliseconds))
+        {
+            return DateTimeOffset.FromUnixTimeMilliseconds(unixMilliseconds).UtcDateTime;
+        }
+
+        if (properties.Timestamp.UnixTime > 0)
+        {
+            return DateTimeOffset.FromUnixTimeSeconds(properties.Timestamp.UnixTime).UtcDateTime;
+        }
+
+        return DateTime.UtcNow;
+    }
+
+    private static bool TryReadUnixMilliseconds(object? value, out long unixMilliseconds)
+    {
+        switch (value)
+        {
+            case long longValue:
+                unixMilliseconds = longValue;
+                return true;
+            case int intValue:
+                unixMilliseconds = intValue;
+                return true;
+            case string text when long.TryParse(text, out var parsedString):
+                unixMilliseconds = parsedString;
+                return true;
+            case byte[] bytes when long.TryParse(Encoding.UTF8.GetString(bytes), out var parsedBytes):
+                unixMilliseconds = parsedBytes;
+                return true;
+            default:
+                unixMilliseconds = 0;
+                return false;
+        }
+    }
 }
-
-
-

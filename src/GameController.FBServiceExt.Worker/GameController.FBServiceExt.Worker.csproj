@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -17,4 +17,9 @@
     <ProjectReference Include="..\GameController.FBServiceExt.Application\GameController.FBServiceExt.Application.csproj" SkipGetTargetFrameworkProperties="true" />
     <ProjectReference Include="..\GameController.FBServiceExt.Infrastructure\GameController.FBServiceExt.Infrastructure.csproj" SkipGetTargetFrameworkProperties="true" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\appsettings.Shared*.json" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
+

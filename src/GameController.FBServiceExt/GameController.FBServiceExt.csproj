@@ -1,9 +1,17 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <Compile Remove="FakeMetaMessengerStore.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\GameController.FBServiceExt.Application\GameController.FBServiceExt.Application.csproj" SkipGetTargetFrameworkProperties="true" />
     <ProjectReference Include="..\GameController.FBServiceExt.Infrastructure\GameController.FBServiceExt.Infrastructure.csproj" SkipGetTargetFrameworkProperties="true" />
     <PackageReference Include="Serilog.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\assets\L1\" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -14,5 +22,10 @@
     <UserSecretsId>GameController-FBServiceExt-Api</UserSecretsId>
   </PropertyGroup>
 
+
+  <ItemGroup>
+    <None Include="..\..\appsettings.Shared*.json" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
+
 

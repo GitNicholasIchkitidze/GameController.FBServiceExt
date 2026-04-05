@@ -1,0 +1,128 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FBServiceExt Dev Launcher</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: rgba(16, 24, 37, 0.94);
+      --line: #2a3b57;
+      --text: #e6edf7;
+      --muted: #97a6bc;
+      --accent: #58d3aa;
+      --accent-2: #7cc8ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at top left, #15213a 0, var(--bg) 42%);
+      color: var(--text);
+      font-family: Consolas, "Courier New", monospace;
+      padding: 24px;
+    }
+    .panel {
+      width: min(760px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28);
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 24px;
+    }
+    p {
+      margin: 0 0 16px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 22px 0;
+    }
+    a {
+      display: block;
+      text-decoration: none;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: rgba(12, 20, 34, 0.7);
+    }
+    a strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    a span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .status {
+      margin-top: 10px;
+      color: var(--accent-2);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <h1>FBServiceExt Dev Launcher</h1>
+    <p>Current tab will continue to metrics. Additional local tools are opened in separate tabs in the same browser when possible.</p>
+    <div class="grid">
+      <a href="/dev-metrics/index.html" target="_self">
+        <strong>Metrics</strong>
+        <span>Primary dashboard in current tab</span>
+      </a>
+      <a href="/dev-logs/index.html" target="_blank" rel="noopener noreferrer">
+        <strong>Logs</strong>
+        <span>Graylog-backed local log viewer</span>
+      </a>
+      <a href="/dev-admin/index.html" target="_blank" rel="noopener noreferrer">
+        <strong>Admin</strong>
+        <span>Voting and runtime control panel</span>
+      </a>
+    </div>
+    <div class="status" id="status">Opening tabs...</div>
+  </main>
+  <script>
+    const tabs = [
+      '/dev-logs/index.html',
+      '/dev-admin/index.html'
+    ];
+
+    const status = document.getElementById('status');
+    const opened = [];
+    const blocked = [];
+
+    for (const url of tabs) {
+      const handle = window.open(url, '_blank');
+      if (handle) {
+        opened.push(url);
+      } else {
+        blocked.push(url);
+      }
+    }
+
+    if (blocked.length > 0) {
+      status.textContent = 'Some tabs were blocked by the browser popup policy. Use the links above if needed.';
+      setTimeout(() => {
+        window.location.replace('/dev-metrics/index.html');
+      }, 1200);
+    } else {
+      status.textContent = 'Metrics stays in this tab. Logs and Admin were opened in additional tabs.';
+      setTimeout(() => {
+        window.location.replace('/dev-metrics/index.html');
+      }, 400);
+    }
+  </script>
+</body>
+</html>

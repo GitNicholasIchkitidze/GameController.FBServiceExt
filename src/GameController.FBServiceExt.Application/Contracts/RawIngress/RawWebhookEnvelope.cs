@@ -5,5 +5,4 @@ public sealed record RawWebhookEnvelope(
     string Source,
     string RequestId,
     DateTime ReceivedAtUtc,
-    IReadOnlyDictionary<string, string[]> Headers,
     string Body);

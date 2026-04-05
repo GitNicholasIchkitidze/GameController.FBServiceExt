@@ -1,0 +1,346 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FBServiceExt Admin Console</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: rgba(13, 21, 35, 0.94);
+      --panel-2: #121d31;
+      --line: #253655;
+      --text: #e8eef8;
+      --muted: #95a3bb;
+      --accent: #63d4b0;
+      --danger: #ff7b72;
+      --warn: #ffc86d;
+      --info: #7ec8ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(50, 109, 160, 0.18), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(23, 147, 103, 0.14), transparent 26%),
+        var(--bg);
+      font-family: Consolas, "Courier New", monospace;
+    }
+    .shell { max-width: 1280px; margin: 0 auto; padding: 28px; }
+    .hidden { display: none !important; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 20px;
+      box-shadow: 0 20px 36px rgba(0, 0, 0, .26);
+      backdrop-filter: blur(12px);
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .wide-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: 34px; margin-bottom: 10px; }
+    h2 { font-size: 18px; margin-bottom: 14px; }
+    .sub { color: var(--muted); line-height: 1.6; }
+    .toolbar {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 190px 140px 140px;
+      gap: 12px;
+    }
+    .field { display: grid; gap: 6px; }
+    .field label, .eyebrow {
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    input, select, button {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+    }
+    button { cursor: pointer; }
+    button.primary {
+      background: linear-gradient(135deg, #16725f, #164b86);
+      border: none;
+    }
+    button.secondary { background: #223149; }
+    button.danger {
+      background: linear-gradient(135deg, #7f3142, #6e2837);
+      border: none;
+    }
+    button:disabled { opacity: .55; cursor: wait; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+    }
+    .badge.ok { color: var(--accent); background: rgba(99, 212, 176, .12); border-color: rgba(99, 212, 176, .2); }
+    .badge.off { color: var(--warn); background: rgba(255, 200, 109, .12); border-color: rgba(255, 200, 109, .2); }
+    .badge.error { color: var(--danger); background: rgba(255, 123, 114, .12); border-color: rgba(255, 123, 114, .2); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .meta { display: grid; gap: 10px; }
+    .meta-row { display: flex; justify-content: space-between; gap: 12px; }
+    .meta-label { color: var(--muted); }
+    .big-state {
+      min-height: 156px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.08);
+      font-size: 42px;
+      font-weight: 700;
+      background: linear-gradient(135deg, rgba(16, 59, 44, .85), rgba(15, 53, 83, .85));
+      color: var(--accent);
+    }
+    .big-state.off {
+      background: linear-gradient(135deg, rgba(87, 62, 20, .82), rgba(89, 39, 27, .82));
+      color: var(--warn);
+    }
+    .big-state .hint { font-size: 14px; color: var(--muted); font-weight: 400; }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .stat {
+      min-height: 94px;
+      border-radius: 15px;
+      padding: 12px;
+      background: rgba(18, 29, 49, .78);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .stat-label { color: var(--muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; }
+    .stat-value { font-size: 25px; font-weight: 700; }
+    .stat-note { margin-top: 6px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .message {
+      min-height: 44px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(10, 16, 25, .82);
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .message.success { color: var(--accent); border-color: rgba(99, 212, 176, .18); }
+    .message.error { color: var(--danger); border-color: rgba(255, 123, 114, .18); }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      text-align: left;
+      padding: 12px 10px;
+      border-top: 1px solid rgba(255,255,255,.06);
+      vertical-align: top;
+    }
+    th { font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: .08em; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid transparent;
+    }
+    .pill.stable { color: var(--accent); background: rgba(99, 212, 176, .12); border-color: rgba(99, 212, 176, .18); }
+    .pill.transient { color: var(--warn); background: rgba(255, 200, 109, .12); border-color: rgba(255, 200, 109, .18); }
+    .pill.draining { color: var(--info); background: rgba(126, 200, 255, .12); border-color: rgba(126, 200, 255, .18); }
+    .pill.critical { color: var(--danger); background: rgba(255, 123, 114, .12); border-color: rgba(255, 123, 114, .18); }
+    .instance-list { display: grid; gap: 10px; }
+    .instance-item {
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(18, 29, 49, .72);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .instance-title { font-weight: 700; margin-bottom: 6px; }
+    .instance-meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .mini-cell {
+      border-radius: 10px;
+      background: rgba(8, 13, 22, .58);
+      padding: 10px;
+    }
+    .mini-label { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+    .mini-value { margin-top: 4px; font-size: 16px; font-weight: 700; }
+    #loginView {
+      min-height: calc(100vh - 56px);
+      display: grid;
+      place-items: center;
+    }
+    .login-card { width: min(460px, 100%); }
+    .login-form { display: grid; gap: 12px; margin-top: 18px; }
+    .muted-link { color: var(--info); text-decoration: none; }
+    .muted-link:hover { text-decoration: underline; }
+    @media (max-width: 1100px) {
+      .hero, .grid, .wide-grid, .toolbar, .mini-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section id="loginView">
+      <div class="card login-card">
+        <div class="eyebrow">Operator Access</div>
+        <h1>FBServiceExt Admin Console</h1>
+        <p class="sub">Sign in to control <code>VotingStarted</code> and watch live queue and processing metrics. This page is intended for operators and later will host realtime voting results too.</p>
+        <form id="loginForm" class="login-form">
+          <div class="field">
+            <label for="usernameInput">Username</label>
+            <input id="usernameInput" name="username" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label for="passwordInput">Password</label>
+            <input id="passwordInput" name="password" type="password" autocomplete="current-password" required>
+          </div>
+          <button id="loginButton" class="primary" type="submit">Sign in</button>
+        </form>
+        <div style="height: 12px;"></div>
+        <div id="loginMessage" class="message">Waiting for sign-in.</div>
+      </div>
+    </section>
+
+    <section id="dashboardView" class="hidden">
+      <section class="hero">
+        <div class="card">
+          <div class="eyebrow">Operator Console</div>
+          <h1>Voting Control Board</h1>
+          <p class="sub">Use this page to turn voting on or off, and watch the live runtime picture while webhook traffic is flowing. The same page will be extended with realtime voting results.</p>
+          <div class="toolbar">
+            <div class="field">
+              <label for="refreshSelect">Refresh</label>
+              <select id="refreshSelect">
+                <option value="1000">1 sec</option>
+                <option value="2000" selected>2 sec</option>
+                <option value="5000">5 sec</option>
+                <option value="10000">10 sec</option>
+              </select>
+            </div>
+            <button id="refreshButton" class="primary" type="button">Refresh</button>
+            <button id="pauseButton" class="secondary" type="button">Pause</button>
+          </div>
+        </div>
+        <div class="card meta">
+          <div class="meta-row"><span class="meta-label">Session</span><span id="sessionBadge" class="badge ok"><span class="dot"></span><span id="sessionText">Signed in</span></span></div>
+          <div class="meta-row"><span class="meta-label">Operator</span><span id="operatorName">-</span></div>
+          <div class="meta-row"><span class="meta-label">Generated</span><span id="generatedAt">-</span></div>
+          <div class="meta-row"><span class="meta-label">Last refresh</span><span id="lastRefresh">-</span></div>
+          <div class="meta-row"><span class="meta-label">API instances</span><span id="apiInstanceCount">0</span></div>
+          <div class="meta-row"><span class="meta-label">Worker instances</span><span id="workerInstanceCount">0</span></div>
+          <div class="meta-row"><span class="meta-label">Active show</span><span id="activeShowIdText">-</span></div>
+          <button id="logoutButton" class="secondary" type="button">Sign out</button>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Voting Gate</h2>
+          <div id="votingState" class="big-state on">ON<div class="hint" id="votingHint">Traffic is processed normally.</div></div>
+          <div class="stat-grid" style="margin-top: 14px;">
+            <div class="stat">
+              <div class="stat-label">Current value</div>
+              <div id="currentValue" class="stat-value">true</div>
+              <div class="stat-note">Redis is the source of truth. API and Worker cache the flag briefly.</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Effect</div>
+              <div id="effectText" class="stat-value">Process</div>
+              <div class="stat-note">When OFF, regular vote traffic is acknowledged and dropped. <code>#forgetme</code> still passes.</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Actions</h2>
+          <div class="field">
+            <label for="activeShowIdInput">Active ShowId</label>
+            <input id="activeShowIdInput" type="text" placeholder="show-2026-episode-1">
+          </div>
+          <div style="height: 12px;"></div>
+          <div class="stat-grid">
+            <button id="turnOnButton" class="primary" type="button">Turn Voting ON</button>
+            <button id="turnOffButton" class="danger" type="button">Turn Voting OFF</button>
+          </div>
+          <div style="height: 12px;"></div>
+          <div id="actionMessage" class="message">Waiting for live snapshot...</div>
+          <div style="height: 12px;"></div>
+          <p class="sub">Use this with live metrics to see how queue pressure reacts when voting is disabled or re-enabled.</p>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Traffic Snapshot</h2>
+          <div id="trafficStats" class="stat-grid"></div>
+        </div>
+        <div class="card">
+          <h2>Realtime Results Foundation</h2>
+          <div id="resultStats" class="stat-grid"></div>
+        </div>
+      </section>
+
+      <section class="wide-grid">
+        <div class="card">
+          <h2>Queues</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Queue</th>
+                  <th>Status</th>
+                  <th>Consumers</th>
+                  <th>Ready</th>
+                  <th>Unacked</th>
+                  <th>Publish/s</th>
+                  <th>Ack/s</th>
+                </tr>
+              </thead>
+              <tbody id="queueRows"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Worker Instances</h2>
+          <div id="workerInstances" class="instance-list"></div>
+        </div>
+      </section>
+    </section>
+  </div>
+  <script src="/admin/app.js"></script>
+</body>
+</html>
+
+
+

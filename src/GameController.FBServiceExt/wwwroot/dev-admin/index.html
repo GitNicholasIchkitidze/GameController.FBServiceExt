@@ -1,0 +1,135 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FBServiceExt Admin</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: rgba(16, 24, 37, 0.92);
+      --panel-2: #172234;
+      --line: #2a3b57;
+      --text: #e6edf7;
+      --muted: #97a6bc;
+      --accent: #58d3aa;
+      --danger: #ff7373;
+      --warn: #ffbf69;
+      --info: #7cc8ff;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top left, #15213a 0, var(--bg) 42%); color: var(--text); font-family: Consolas, "Courier New", monospace; }
+    .shell { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    .hero, .grid { display: grid; gap: 16px; margin-bottom: 16px; }
+    .hero { grid-template-columns: 1.2fr .8fr; }
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 18px; box-shadow: 0 16px 32px rgba(0,0,0,.2); backdrop-filter: blur(10px); }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: 30px; margin-bottom: 10px; }
+    h2 { font-size: 18px; margin-bottom: 14px; }
+    .sub { color: var(--muted); line-height: 1.6; }
+    .toolbar { display: grid; grid-template-columns: 180px 140px 140px; gap: 12px; margin-top: 18px; }
+    .field { display: grid; gap: 6px; }
+    .field label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    input, select, button { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font: inherit; }
+    button { cursor: pointer; }
+    button.primary { background: linear-gradient(135deg, #1b7f6b, #155b71); border: none; }
+    button.secondary { background: #243041; }
+    button.danger { background: linear-gradient(135deg, #7b2e3f, #6d2635); border: none; }
+    button:disabled { opacity: .55; cursor: wait; }
+    .meta { display: grid; gap: 10px; }
+    .meta-row { display: flex; justify-content: space-between; gap: 12px; }
+    .meta-label { color: var(--muted); }
+    .badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; border: 1px solid transparent; }
+    .badge.live { background: #12291f; color: var(--accent); border-color: #1b4c3e; }
+    .badge.off { background: rgba(255,191,105,.12); color: var(--warn); border-color: rgba(255,191,105,.25); }
+    .badge.error { background: rgba(255,115,115,.12); color: var(--danger); border-color: rgba(255,115,115,.25); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+    .stat { background: rgba(23,34,52,.75); border: 1px solid rgba(255,255,255,.06); border-radius: 14px; padding: 12px; min-height: 92px; }
+    .stat-label { color: var(--muted); font-size: 12px; margin-bottom: 8px; text-transform: uppercase; }
+    .stat-value { font-size: 24px; font-weight: 700; }
+    .stat-note { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+    .big-state { display: flex; align-items: center; justify-content: center; min-height: 150px; border-radius: 18px; font-size: 42px; font-weight: 700; border: 1px solid rgba(255,255,255,.08); background: linear-gradient(135deg, rgba(20, 59, 45, .8), rgba(15, 50, 79, .8)); }
+    .big-state.off { background: linear-gradient(135deg, rgba(82, 56, 18, .8), rgba(84, 36, 27, .8)); color: var(--warn); }
+    .big-state.on { color: var(--accent); }
+    .message { min-height: 42px; border-radius: 14px; padding: 12px 14px; border: 1px solid rgba(255,255,255,.08); background: rgba(15, 22, 33, .8); color: var(--muted); line-height: 1.5; }
+    .message.success { color: var(--accent); border-color: rgba(88,211,170,.2); }
+    .message.error { color: var(--danger); border-color: rgba(255,115,115,.2); }
+    a.link { color: var(--info); text-decoration: none; }
+    a.link:hover { text-decoration: underline; }
+    @media (max-width: 980px) { .hero, .grid, .toolbar { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="card">
+        <h1>FBServiceExt Admin</h1>
+        <p class="sub">Local-only control page for runtime feature flags. It now manages both the Redis-backed <code>VotingStarted</code> switch and the current <code>ActiveShowId</code> that signed payloads validate against.</p>
+        <div class="toolbar">
+          <div class="field">
+            <label for="refreshSelect">Refresh</label>
+            <select id="refreshSelect">
+              <option value="1000">1 sec</option>
+              <option value="2000" selected>2 sec</option>
+              <option value="5000">5 sec</option>
+              <option value="10000">10 sec</option>
+            </select>
+          </div>
+          <button id="refreshButton" class="primary">Refresh</button>
+          <button id="pauseButton" class="secondary">Pause</button>
+        </div>
+      </div>
+      <div class="card meta">
+        <div class="meta-row"><span class="meta-label">Status</span><span id="statusBadge" class="badge live"><span class="dot"></span><span id="statusText">Ready</span></span></div>
+        <div class="meta-row"><span class="meta-label">Generated</span><span id="generatedAt">-</span></div>
+        <div class="meta-row"><span class="meta-label">Last refresh</span><span id="lastRefresh">-</span></div>
+        <div class="meta-row"><span class="meta-label">Source</span><span id="sourceText">redis</span></div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Voting Gate</h2>
+        <div id="votingState" class="big-state on">ON</div>
+        <div class="stat-grid" style="margin-top: 14px;">
+          <div class="stat">
+            <div class="stat-label">Current value</div>
+            <div id="currentValue" class="stat-value">true</div>
+            <div class="stat-note">Source of truth lives in Redis and is cached briefly inside API/Worker processes.</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Effect</div>
+            <div id="effectText" class="stat-value">Process</div>
+            <div class="stat-note">When OFF, normal vote traffic is ignored early. When ON, ActiveShowId must also be configured.</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Active show</div>
+            <div id="activeShowValue" class="stat-value">-</div>
+            <div class="stat-note">Signed vote payloads must match this value.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Actions</h2>
+        <div class="field">
+          <label for="activeShowInput">Active ShowId</label>
+          <input id="activeShowInput" placeholder="show-2026-episode-1">
+        </div>
+        <div style="height: 12px;"></div>
+        <div class="stat-grid">
+          <button id="turnOnButton" class="primary">Turn Voting ON</button>
+          <button id="turnOffButton" class="danger">Turn Voting OFF</button>
+        </div>
+        <div style="height: 12px;"></div>
+        <div id="messageBox" class="message">Waiting for snapshot...</div>
+        <div style="height: 12px;"></div>
+        <p class="sub">Use this together with <a class="link" href="/dev/metrics" target="_blank" rel="noreferrer">metrics</a> to verify runtime changes immediately.</p>
+      </div>
+    </section>
+  </div>
+  <script src="/dev-admin/app.js"></script>
+</body>
+</html>

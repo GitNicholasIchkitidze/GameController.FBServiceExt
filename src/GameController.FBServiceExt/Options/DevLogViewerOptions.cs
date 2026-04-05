@@ -1,10 +1,16 @@
-namespace GameController.FBServiceExt.Options;
+﻿namespace GameController.FBServiceExt.Options;
 
 public sealed class DevLogViewerOptions
 {
     public const string SectionName = "DevLogViewer";
 
     public bool Enabled { get; set; }
+
+    public bool ClearLogsOnStart { get; set; }
+
+    public bool OpenAdditionalTabsOnStart { get; set; }
+
+    public string[] StartupTabs { get; set; } = [];
 
     public string GraylogBaseUrl { get; set; } = "http://127.0.0.1:9000";
 

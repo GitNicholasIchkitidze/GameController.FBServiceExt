@@ -5,10 +5,12 @@ public sealed record AcceptedVote(
     string CorrelationId,
     string UserId,
     string RecipientId,
+    string ShowId,
     string CandidateId,
     string CandidateDisplayName,
     string SourceEventId,
     DateTime ConfirmedAtUtc,
     DateTime CooldownUntilUtc,
     string Channel,
-    string? MetadataJson);
+    string? MetadataJson,
+    string? UserAccountName = null);

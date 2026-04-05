@@ -1,4 +1,4 @@
-namespace GameController.FBServiceExt.Infrastructure.Data.Entities;
+﻿namespace GameController.FBServiceExt.Infrastructure.Data.Entities;
 
 internal sealed class AcceptedVoteEntity
 {
@@ -9,6 +9,8 @@ internal sealed class AcceptedVoteEntity
     public string UserId { get; set; } = string.Empty;
 
     public string RecipientId { get; set; } = string.Empty;
+
+    public string ShowId { get; set; } = string.Empty;
 
     public string CandidateId { get; set; } = string.Empty;
 
@@ -23,6 +25,8 @@ internal sealed class AcceptedVoteEntity
     public string Channel { get; set; } = string.Empty;
 
     public string? MetadataJson { get; set; }
+
+    public string? UserAccountName { get; set; }
 
     public DateTime RecordedAtUtc { get; set; }
 }
