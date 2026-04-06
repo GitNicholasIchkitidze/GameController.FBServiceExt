@@ -38,6 +38,7 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
     private readonly IRuntimeMetricsCollector _runtimeMetricsCollector;
     private readonly IOutboundMessengerClient _outboundMessengerClient;
     private readonly IOptionsMonitor<VotingWorkflowOptions> _workflowOptionsMonitor;
+    private readonly IOptionsMonitor<NormalizedEventStorageOptions> _normalizedEventStorageOptionsMonitor;
     private readonly IOptionsMonitor<DataErasureOptions> _dataErasureOptionsMonitor;
     private readonly IOptionsMonitor<CandidatesOptions> _candidateOptionsMonitor;
     private readonly IOptionsMonitor<MessengerContentOptions> _messengerContentOptionsMonitor;
@@ -56,6 +57,7 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
         IRuntimeMetricsCollector runtimeMetricsCollector,
         IOutboundMessengerClient outboundMessengerClient,
         IOptionsMonitor<VotingWorkflowOptions> workflowOptionsMonitor,
+        IOptionsMonitor<NormalizedEventStorageOptions> normalizedEventStorageOptionsMonitor,
         IOptionsMonitor<DataErasureOptions> dataErasureOptionsMonitor,
         IOptionsMonitor<CandidatesOptions> candidateOptionsMonitor,
         IOptionsMonitor<MessengerContentOptions> messengerContentOptionsMonitor,
@@ -73,6 +75,7 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
         _runtimeMetricsCollector = runtimeMetricsCollector;
         _outboundMessengerClient = outboundMessengerClient;
         _workflowOptionsMonitor = workflowOptionsMonitor;
+        _normalizedEventStorageOptionsMonitor = normalizedEventStorageOptionsMonitor;
         _dataErasureOptionsMonitor = dataErasureOptionsMonitor;
         _candidateOptionsMonitor = candidateOptionsMonitor;
         _messengerContentOptionsMonitor = messengerContentOptionsMonitor;
@@ -138,12 +141,44 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
             _ => default
         };
 
-        if (!result.SkipNormalizedEventPersistence)
+        if (ShouldPersistNormalizedEvent(normalizedEvent, result))
         {
             await _normalizedEventStore.TryAddAsync(normalizedEvent, cancellationToken);
         }
 
         await _eventDeduplicationStore.MarkProcessedAsync(normalizedEvent.EventId, workflow.ProcessedEventRetention, cancellationToken);
+    }
+
+    private bool ShouldPersistNormalizedEvent(NormalizedMessengerEvent normalizedEvent, EventProcessingResult result)
+    {
+        if (result.SkipNormalizedEventPersistence)
+        {
+            return false;
+        }
+
+        return _normalizedEventStorageOptionsMonitor.CurrentValue.Mode switch
+        {
+            NormalizedEventStorageMode.Full => true,
+            NormalizedEventStorageMode.Minimal => ShouldPersistInMinimalMode(normalizedEvent),
+            NormalizedEventStorageMode.Disabled => false,
+            _ => true
+        };
+    }
+
+    private bool ShouldPersistInMinimalMode(NormalizedMessengerEvent normalizedEvent)
+    {
+        if (normalizedEvent.EventType != MessengerEventType.Message)
+        {
+            return false;
+        }
+
+        var text = NormalizedEventPayloadReader.GetMessageText(normalizedEvent.PayloadJson);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        return MatchesVoteStartToken(text, _workflowOptionsMonitor.CurrentValue) || MatchesForgetMeToken(text);
     }
 
     private async ValueTask<EventProcessingResult> ProcessMessageAsync(

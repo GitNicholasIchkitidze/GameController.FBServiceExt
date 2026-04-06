@@ -125,6 +125,53 @@ public sealed class NormalizedEventProcessorTests
     }
 
     [Fact]
+    public async Task ProcessAsync_DisabledNormalizedEventStorage_DoesNotPersistAnything()
+    {
+        var dedupe = new InMemoryDedupeStore();
+        var cooldowns = new InMemoryVoteCooldownStore();
+        var normalizedEvents = new InMemoryNormalizedEventStore();
+        var votes = new InMemoryAcceptedVoteStore();
+        var outbound = new InMemoryOutboundMessengerClient();
+        var processor = CreateProcessor(
+            dedupe,
+            cooldowns,
+            normalizedEvents,
+            votes,
+            outboundMessengerClient: outbound,
+            storageMode: NormalizedEventStorageMode.Disabled);
+
+        await processor.ProcessAsync(CreateMessageEvent("mid-disabled", "user-1", "page-1", "GET_STARTED"), CancellationToken.None);
+
+        Assert.Empty(normalizedEvents.Items);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_MinimalNormalizedEventStorage_PersistsOnlyMessageEntryPoints()
+    {
+        var dedupe = new InMemoryDedupeStore();
+        var cooldowns = new InMemoryVoteCooldownStore();
+        var normalizedEvents = new InMemoryNormalizedEventStore();
+        var votes = new InMemoryAcceptedVoteStore();
+        var outbound = new InMemoryOutboundMessengerClient();
+        var now = new DateTime(2026, 4, 4, 12, 0, 0, DateTimeKind.Utc);
+        var processor = CreateProcessor(
+            dedupe,
+            cooldowns,
+            normalizedEvents,
+            votes,
+            outboundMessengerClient: outbound,
+            storageMode: NormalizedEventStorageMode.Minimal,
+            timeProvider: new FakeTimeProvider(now));
+
+        await processor.ProcessAsync(CreateMessageEvent("mid-1", "user-1", "page-1", "GET_STARTED", now), CancellationToken.None);
+        var votePayload = Assert.Single(Assert.Single(outbound.GenericTemplates).Elements).Buttons.Single().Payload;
+        await processor.ProcessAsync(CreatePostbackEvent("pb-1", "user-1", "page-1", votePayload, now.AddSeconds(2)), CancellationToken.None);
+
+        Assert.Single(normalizedEvents.Items);
+        Assert.Equal("mid-1", normalizedEvents.Items.Single().EventId);
+    }
+
+    [Fact]
     public async Task ProcessAsync_StaleShowVotePayload_RecoversWithFreshCarousel()
     {
         var dedupe = new InMemoryDedupeStore();
@@ -208,7 +255,8 @@ public sealed class NormalizedEventProcessorTests
         InMemoryVotingGateService? votingGateService = null,
         TimeProvider? timeProvider = null,
         IUserDataErasureService? userDataErasureService = null,
-        InMemoryUserAccountNameStore? userAccountNameStore = null)
+        InMemoryUserAccountNameStore? userAccountNameStore = null,
+        NormalizedEventStorageMode storageMode = NormalizedEventStorageMode.Full)
     {
         outboundMessengerClient ??= new InMemoryOutboundMessengerClient();
         votingGateService ??= new InMemoryVotingGateService(true, ActiveShowId);
@@ -227,6 +275,7 @@ public sealed class NormalizedEventProcessorTests
             new TestRuntimeMetricsCollector(),
             outboundMessengerClient,
             new StaticOptionsMonitor<VotingWorkflowOptions>(CreateWorkflowOptions()),
+            new StaticOptionsMonitor<NormalizedEventStorageOptions>(new NormalizedEventStorageOptions { Mode = storageMode }),
             new StaticOptionsMonitor<DataErasureOptions>(new DataErasureOptions
             {
                 ConfirmationPayloadSecret = ErasureSecret,

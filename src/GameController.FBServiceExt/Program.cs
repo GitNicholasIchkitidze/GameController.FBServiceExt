@@ -405,7 +405,9 @@ try
             DateTime? fromUtc,
             DateTime? toUtc,
             string? showId,
-            int? limit,
+            string? userFilter,
+            int? page,
+            int? pageSize,
             IVotingGateService votingGateService,
             IAcceptedVotesMonitorService monitorService,
             CancellationToken cancellationToken) =>
@@ -413,7 +415,14 @@ try
             var effectiveShowId = string.IsNullOrWhiteSpace(showId)
                 ? await votingGateService.GetActiveShowIdAsync(cancellationToken)
                 : showId.Trim();
-            var snapshot = await monitorService.GetSnapshotAsync(fromUtc, toUtc, effectiveShowId, limit ?? 200, cancellationToken);
+            var snapshot = await monitorService.GetSnapshotAsync(
+                fromUtc,
+                toUtc,
+                effectiveShowId,
+                userFilter,
+                page ?? 1,
+                pageSize ?? 200,
+                cancellationToken);
             return Results.Ok(new
             {
                 generatedAtUtc = snapshot.GeneratedAtUtc,
@@ -423,7 +432,7 @@ try
                 totalVotes = snapshot.TotalVotes,
                 totalUniqueUsers = snapshot.TotalUniqueUsers,
                 candidates = snapshot.Candidates,
-                recentVotes = snapshot.RecentVotes,
+                recentVotesPage = snapshot.RecentVotesPage,
                 source = string.IsNullOrWhiteSpace(showId) ? "active-show" : "explicit-show"
             });
         });

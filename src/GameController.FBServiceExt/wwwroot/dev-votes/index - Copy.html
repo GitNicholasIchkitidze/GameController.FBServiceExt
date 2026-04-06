@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FBServiceExt Poll Monitor</title>
+  <style>
+    :root {
+      --bg: #edf3fb;
+      --card: #ffffff;
+      --line: #d8e1ef;
+      --text: #172235;
+      --muted: #667589;
+      --blue: #2b7cff;
+      --green: #1ca66f;
+      --green-dark: #0c7d51;
+      --red: #d84c61;
+      --red-dark: #a73347;
+      --panel: #f6f9fe;
+      --shadow: 0 18px 34px rgba(22, 39, 73, .08);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background: linear-gradient(180deg, #f7faff 0%, var(--bg) 100%);
+      font-family: "Sylfaen", "Noto Sans Georgian", "Segoe UI", Arial, sans-serif;
+    }
+    .shell { max-width: 1560px; margin: 0 auto; padding: 22px 18px 28px; }
+    .hero { display: grid; gap: 8px; margin-bottom: 16px; }
+    .title { margin: 0; font-size: 44px; line-height: 1; letter-spacing: -.04em; }
+    .sub { margin: 0; color: var(--muted); line-height: 1.45; font-size: 15px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    .top-card { display: grid; gap: 14px; }
+    .top-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+    .status-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 14px;
+      border: 1px solid transparent;
+    }
+    .badge.on { background: rgba(28,166,111,.12); color: var(--green-dark); border-color: rgba(28,166,111,.22); }
+    .badge.off { background: rgba(216,76,97,.12); color: var(--red-dark); border-color: rgba(216,76,97,.2); }
+    .badge.live { background: rgba(43,124,255,.12); color: var(--blue); border-color: rgba(43,124,255,.18); }
+    button, input, select {
+      width: 100%; border-radius: 12px; border: 1px solid var(--line);
+      background: #fff; color: var(--text); padding: 11px 13px; font: inherit;
+    }
+    input, select { background: var(--panel); }
+    button { cursor: pointer; transition: transform .12s ease, opacity .12s ease; }
+    button:hover { transform: translateY(-1px); }
+    button.primary { background: linear-gradient(180deg, var(--green), var(--green-dark)); border-color: transparent; color: #fff; }
+    button.danger { background: linear-gradient(180deg, var(--red), var(--red-dark)); border-color: transparent; color: #fff; }
+    button.secondary { background: var(--panel); }
+    .main-toggle { max-width: 280px; }
+    .controls {
+      display: grid;
+      grid-template-columns: 150px minmax(170px, 1fr) minmax(170px, 1fr) minmax(180px, 1fr) 160px 160px;
+      gap: 10px;
+      align-items: end;
+    }
+    .field { display: grid; gap: 6px; }
+    .field label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .meta-strip {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .meta-tile {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      min-height: 72px;
+    }
+    .meta-tile .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .meta-tile .value { margin-top: 6px; font-size: 26px; font-weight: 700; line-height: 1.15; }
+    .meta-tile .small { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.35; }
+    .message-box {
+      border-radius: 14px; padding: 12px 14px; background: #f8fbff;
+      border: 1px solid var(--line); color: var(--muted); line-height: 1.45;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .summary-card {
+      background: linear-gradient(180deg, #2b7cff, #1f67d8);
+      color: #fff;
+      border-radius: 16px;
+      padding: 14px 16px;
+      min-height: 124px;
+    }
+    .summary-card .label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; opacity: .9; }
+    .summary-card .value { margin-top: 8px; font-size: 40px; font-weight: 800; }
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1.45fr .95fr;
+      gap: 14px;
+      margin-top: 14px;
+      align-items: start;
+    }
+    .panel-card { padding: 0; overflow: hidden; }
+    .panel-head {
+      background: #707987;
+      color: #fff;
+      padding: 13px 16px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .panel-body { padding: 10px 16px; }
+    .poll-item { padding: 14px 0; border-bottom: 1px solid var(--line); }
+    .poll-item:last-child { border-bottom: none; }
+    .poll-main {
+      display: grid;
+      grid-template-columns: 1.25fr .9fr 120px;
+      gap: 12px; align-items: center;
+    }
+    .poll-name { font-size: 20px; font-weight: 800; }
+    .poll-id { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .poll-metrics { text-align: center; }
+    .poll-metrics strong { font-size: 21px; }
+    .poll-unique { text-align: right; color: var(--muted); }
+    .poll-fans { margin-top: 8px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 14px;
+    }
+    .metric-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      min-height: 118px;
+    }
+    .metric-card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .metric-card .value { margin-top: 6px; font-size: 30px; font-weight: 800; }
+    .metric-card .note { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .table-card { margin-top: 14px; }
+    .table-top {
+      display: grid;
+      grid-template-columns: 1fr minmax(240px, 300px) 120px 110px 110px;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+    .table-top h2 { margin: 0; font-size: 22px; }
+    .table-meta {
+      border-radius: 14px; padding: 10px 12px; background: #f8fbff; border: 1px solid var(--line);
+      color: var(--muted); margin-bottom: 12px;
+    }
+    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); }
+    th { position: sticky; top: 0; background: #f7faff; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .empty { color: var(--muted); padding: 16px; }
+    @media (max-width: 1340px) {
+      .controls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .meta-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .content-grid { grid-template-columns: 1fr; }
+      .table-top { grid-template-columns: 1fr 1fr 120px 110px 110px; }
+    }
+    @media (max-width: 920px) {
+      .summary-grid, .meta-strip, .controls, .poll-main, .table-top, .metrics-grid { grid-template-columns: 1fr; }
+      .title { font-size: 34px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <h1 class="title">POLL MONITOR</h1>
+      <p class="sub" id="subText">Loading monitor description...</p>
+    </section>
+
+    <section class="card top-card">
+      <div class="top-head">
+        <div class="status-row">
+          <span id="votingBadge" class="badge off">Voting: OFF</span>
+          <span id="liveBadge" class="badge live">Live</span>
+        </div>
+        <button id="toggleVotingButton" class="primary main-toggle" type="button">Turn Voting ON</button>
+      </div>
+
+      <div class="controls">
+        <div class="field"><label for="refreshSelect">Refresh every</label><select id="refreshSelect"><option value="5000">5 sec</option><option value="10000">10 sec</option><option value="30000">30 sec</option><option value="60000">60 sec</option><option value="120000" selected>120 sec</option></select></div>
+        <div class="field"><label for="fromInput">Date From</label><input id="fromInput" type="datetime-local"></div>
+        <div class="field"><label for="toInput">Date To</label><input id="toInput" type="datetime-local"></div>
+        <div class="field"><label for="showInput">Active / Filter ShowId</label><input id="showInput" placeholder="show-2026-episode-1"></div>
+        <button id="refreshButton" class="secondary" type="button">Manual Refresh</button>
+        <button id="pauseButton" class="secondary" type="button">Pause</button>
+      </div>
+
+      <div id="messageBox" class="message-box">Waiting for first snapshot...</div>
+
+      <div class="meta-strip">
+        <div class="meta-tile"><div class="label">Generated</div><div id="generatedAt" class="value">-</div></div>
+        <div class="meta-tile"><div class="label">Last Refresh</div><div id="lastRefresh" class="value">-</div></div>
+        <div class="meta-tile"><div class="label">Show Source</div><div id="sourceText" class="value">active-show</div></div>
+        <div class="meta-tile"><div class="label">Effective Show</div><div id="activeShowText" class="value">-</div></div>
+        <div class="meta-tile"><div class="label">Status</div><div id="statusText" class="value">Ready</div></div>
+        <div class="meta-tile"><div class="label">Workers</div><div id="workerCount" class="value">0</div></div>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <div class="summary-card"><div class="label">Total Votes</div><div id="totalVotes" class="value">0</div></div>
+      <div class="summary-card"><div class="label">Unique UserIds</div><div id="totalUniqueUsers" class="value">0</div></div>
+      <div class="summary-card"><div class="label">Candidates</div><div id="candidateCount" class="value">0</div></div>
+    </section>
+
+    <section class="content-grid">
+      <div class="card panel-card">
+        <div class="panel-head">POLL Table</div>
+        <div id="candidateSummary" class="panel-body"><div class="empty">No accepted votes in the selected range.</div></div>
+      </div>
+
+      <div class="card panel-card">
+        <div class="panel-head">Realtime Metrics</div>
+        <div class="metrics-grid">
+          <div class="metric-card"><div class="label">Ingress</div><div id="metricIngress" class="value">0</div><div class="note" id="metricIngressNote"></div></div>
+          <div class="metric-card"><div class="label">Garbage Messages</div><div id="metricGarbage" class="value">0</div><div class="note" id="metricGarbageNote"></div></div>
+          <div class="metric-card"><div class="label">Saved Votes In DB</div><div id="metricSavedVotes" class="value">0</div><div class="note" id="metricSavedVotesNote"></div></div>
+          <div class="metric-card"><div class="label">Workers</div><div id="metricWorkers" class="value">0</div><div class="note" id="metricWorkersNote"></div></div>
+          <div class="metric-card"><div class="label">Worker p95</div><div id="metricWorkerP95" class="value">0 ms</div><div class="note" id="metricWorkerP95Note"></div></div>
+          <div class="metric-card"><div class="label">Options Sent</div><div id="metricOptionsSent" class="value">0</div><div class="note" id="metricOptionsSentNote"></div></div>
+          <div class="metric-card"><div class="label">Votes Accepted</div><div id="metricVotesAccepted" class="value">0</div><div class="note" id="metricVotesAcceptedNote"></div></div>
+          <div class="metric-card"><div class="label">Raw p95</div><div id="metricRawP95" class="value">0 ms</div><div class="note" id="metricRawP95Note"></div></div>
+          <div class="metric-card"><div class="label">Ignored</div><div id="metricIgnored" class="value">0</div><div class="note" id="metricIgnoredNote"></div></div>
+          <div class="metric-card"><div class="label">Cooldown Attempts</div><div id="metricCooldown" class="value">0</div><div class="note" id="metricCooldownNote"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card table-card">
+      <div class="table-top">
+        <h2>Last Accepted Votes</h2>
+        <div class="field"><label for="recentFilterInput">Filter</label><input id="recentFilterInput" placeholder="UserId / UserName / Candidate"></div>
+        <div class="field"><label for="pageSizeSelect">Page Size</label><select id="pageSizeSelect"><option value="50">50</option><option value="100">100</option><option value="200" selected>200</option><option value="500">500</option></select></div>
+        <button id="prevPageButton" class="secondary" type="button">Prev</button>
+        <button id="nextPageButton" class="secondary" type="button">Next</button>
+      </div>
+      <div class="table-meta"><span id="paginationInfo">Page 1 / 1</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>User</th><th>Candidate</th><th>ShowId</th><th>Confirmed</th></tr>
+          </thead>
+          <tbody id="recentVotesRows"><tr><td colspan="4" class="empty">No accepted votes yet.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <script src="/dev-votes/app.js"></script>
+</body>
+</html>

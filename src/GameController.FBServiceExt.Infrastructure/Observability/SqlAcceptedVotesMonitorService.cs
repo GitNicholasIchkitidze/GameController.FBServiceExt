@@ -14,9 +14,17 @@ internal sealed class SqlAcceptedVotesMonitorService : IAcceptedVotesMonitorServ
         _dbContextFactory = dbContextFactory;
     }
 
-    public async ValueTask<AcceptedVotesMonitorSnapshot> GetSnapshotAsync(DateTime? fromUtc, DateTime? toUtc, string? showId, int recentLimit, CancellationToken cancellationToken)
+    public async ValueTask<AcceptedVotesMonitorSnapshot> GetSnapshotAsync(
+        DateTime? fromUtc,
+        DateTime? toUtc,
+        string? showId,
+        string? userFilter,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
     {
-        var safeLimit = Math.Clamp(recentLimit, 20, 500);
+        var safePage = Math.Max(1, page);
+        var safePageSize = Math.Clamp(pageSize, 25, 500);
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         var query = dbContext.AcceptedVotes.AsNoTracking().AsQueryable();
@@ -35,8 +43,8 @@ internal sealed class SqlAcceptedVotesMonitorService : IAcceptedVotesMonitorServ
 
         var totalVotes = await query.CountAsync(cancellationToken);
         var totalUniqueUsers = await query
-            .Select(v => new { v.RecipientId, v.UserId })
-            .Distinct()
+            .GroupBy(v => new { v.RecipientId, v.UserId })
+            .Select(g => 1)
             .CountAsync(cancellationToken);
 
         var candidateRows = await query
@@ -46,7 +54,10 @@ internal sealed class SqlAcceptedVotesMonitorService : IAcceptedVotesMonitorServ
                 g.Key.CandidateId,
                 g.Key.CandidateDisplayName,
                 VoteCount = g.Count(),
-                UniqueUsers = g.Select(v => new { v.RecipientId, v.UserId }).Distinct().Count()
+                UniqueUsers = g
+                    .GroupBy(v => new { v.RecipientId, v.UserId })
+                    .Select(userGroup => 1)
+                    .Count()
             })
             .OrderByDescending(x => x.VoteCount)
             .ThenBy(x => x.CandidateDisplayName)
@@ -90,10 +101,29 @@ internal sealed class SqlAcceptedVotesMonitorService : IAcceptedVotesMonitorServ
                     : Array.Empty<AcceptedVotesMonitorTopFan>()))
             .ToList();
 
-        var recentVotes = await query
+        var recentQuery = query;
+        if (!string.IsNullOrWhiteSpace(userFilter))
+        {
+            var normalizedUserFilter = userFilter.Trim();
+            recentQuery = recentQuery.Where(v =>
+                v.UserId.Contains(normalizedUserFilter) ||
+                (v.UserAccountName != null && v.UserAccountName.Contains(normalizedUserFilter)) ||
+                v.CandidateDisplayName.Contains(normalizedUserFilter) ||
+                v.CandidateId.Contains(normalizedUserFilter));
+        }
+
+        var recentTotalCount = await recentQuery.CountAsync(cancellationToken);
+        var recentTotalPages = Math.Max(1, (int)Math.Ceiling(recentTotalCount / (double)safePageSize));
+        if (safePage > recentTotalPages)
+        {
+            safePage = recentTotalPages;
+        }
+
+        var recentItems = await recentQuery
             .OrderByDescending(v => v.ConfirmedAtUtc)
             .ThenByDescending(v => v.RecordedAtUtc)
-            .Take(safeLimit)
+            .Skip((safePage - 1) * safePageSize)
+            .Take(safePageSize)
             .Select(v => new AcceptedVotesMonitorRecentVote(
                 v.UserId,
                 string.IsNullOrWhiteSpace(v.UserAccountName) ? v.UserId : v.UserAccountName!,
@@ -112,6 +142,11 @@ internal sealed class SqlAcceptedVotesMonitorService : IAcceptedVotesMonitorServ
             totalVotes,
             totalUniqueUsers,
             candidates,
-            recentVotes);
+            new AcceptedVotesMonitorRecentVotesPage(
+                safePage,
+                safePageSize,
+                recentTotalCount,
+                recentTotalPages,
+                recentItems));
     }
 }

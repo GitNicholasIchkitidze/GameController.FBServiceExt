@@ -36,6 +36,22 @@ public static class DependencyInjection
             .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString), "Redis connection string is required.")
             .ValidateOnStart();
 
+        services.AddOptions<SqlStorageOptions>()
+            .Bind(configuration.GetSection(SqlStorageOptions.SectionName))
+            .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString), "SQL storage connection string is required.")
+            .ValidateOnStart();
+
+        services.AddDbContextFactory<FbServiceExtDbContext>((serviceProvider, optionsBuilder) =>
+        {
+            var sqlStorageOptions = serviceProvider.GetRequiredService<IOptionsMonitor<SqlStorageOptions>>().CurrentValue;
+            optionsBuilder.UseSqlServer(
+                sqlStorageOptions.ConnectionString,
+                sqlOptions => sqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorNumbersToAdd: null));
+        });
+
         services.AddSingleton<RabbitMqConnectionProvider>();
         services.TryAddSingleton<RedisConnectionProvider>();
         services.AddSingleton<RedisFakeMetaMessengerStore>();

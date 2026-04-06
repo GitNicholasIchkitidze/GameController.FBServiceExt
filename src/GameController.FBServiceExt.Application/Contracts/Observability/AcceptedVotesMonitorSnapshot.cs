@@ -8,7 +8,7 @@ public sealed record AcceptedVotesMonitorSnapshot(
     int TotalVotes,
     int TotalUniqueUsers,
     IReadOnlyList<AcceptedVotesMonitorCandidateSummary> Candidates,
-    IReadOnlyList<AcceptedVotesMonitorRecentVote> RecentVotes);
+    AcceptedVotesMonitorRecentVotesPage RecentVotesPage);
 
 public sealed record AcceptedVotesMonitorCandidateSummary(
     string CandidateId,
@@ -31,3 +31,10 @@ public sealed record AcceptedVotesMonitorRecentVote(
     string ShowId,
     DateTime ConfirmedAtUtc,
     DateTime RecordedAtUtc);
+
+public sealed record AcceptedVotesMonitorRecentVotesPage(
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages,
+    IReadOnlyList<AcceptedVotesMonitorRecentVote> Items);
