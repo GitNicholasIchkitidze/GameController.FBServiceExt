@@ -2,260 +2,163 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>FBServiceExt Webhook Path</title>
+  <title>FBServiceExt Webhook Path Diagram</title>
   <style>
-    @page { size: A4 landscape; margin: 10mm; }
-    body {
-      margin: 0;
-      font-family: Consolas, "Courier New", monospace;
-      background: #0d1117;
-      color: #e6edf3;
+    @page { size: A4 landscape; margin: 9mm; }
+    :root {
+      --bg:#0b1220; --panel:#121c2b; --panel2:#18263a; --line:#2d3f5a; --text:#edf4fb; --muted:#9eb2c8;
+      --ack:#22c55e; --queue:#60a5fa; --worker:#f59e0b; --state:#a78bfa; --db:#f87171; --shadow:0 16px 34px rgba(0,0,0,.22);
     }
-    .page {
-      width: 1720px;
-      margin: 0 auto;
-      padding: 24px 28px 18px;
-      box-sizing: border-box;
-    }
-    h1 {
-      margin: 0 0 8px;
-      font-size: 30px;
-      letter-spacing: 0.02em;
-    }
-    .subtitle {
-      margin: 0 0 18px;
-      color: #9fb0c7;
-      font-size: 16px;
-    }
-    .legend {
-      display: flex;
-      gap: 14px;
-      margin-bottom: 18px;
-      font-size: 14px;
-      color: #9fb0c7;
-      flex-wrap: wrap;
-    }
-    .tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid #2d3b4f;
-      background: #141b24;
-    }
-    .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-    .ack { background: #26b38f; }
-    .early { background: #ffb454; }
-    .bg { background: #6ea8ff; }
-    .note {
-      margin-top: 14px;
-      color: #a9b9cc;
-      font-size: 15px;
-      line-height: 1.55;
-      border-top: 1px solid #263243;
-      padding-top: 12px;
-    }
-    svg {
-      width: 100%;
-      height: auto;
-      display: block;
-      border: 1px solid #263243;
-      border-radius: 18px;
-      background: linear-gradient(180deg, #121923 0%, #0f141b 100%);
-    }
-    .block-title {
-      font-size: 13px;
-      font-weight: 700;
-      fill: #f0f6fc;
-      text-anchor: middle;
-    }
-    .block-text {
-      font-size: 10.5px;
-      fill: #d3deea;
-      text-anchor: middle;
-    }
-    .ref-text {
-      font-size: 8.8px;
-      fill: #9fc0de;
-      text-anchor: middle;
-    }
-    .section-title {
-      font-size: 20px;
-      font-weight: 700;
-      fill: #f8fbff;
-    }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 "Aptos", "Segoe UI", Arial, sans-serif; }
+    .page { width:1580px; margin:0 auto; padding:20px; }
+    h1 { margin:0 0 8px; font-size:34px; }
+    .sub { color:var(--muted); margin-bottom:16px; }
+    .diagram { display:grid; grid-template-columns:1.05fr 0.95fr 0.9fr; gap:14px; align-items:start; }
+    .card { background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line); border-radius:18px; padding:16px; box-shadow:var(--shadow); }
+    .card h2 { margin:0 0 10px; font-size:18px; }
+    .lane { display:grid; gap:10px; }
+    .node { border:1px solid var(--line); border-radius:14px; padding:12px 13px; background:rgba(255,255,255,.03); position:relative; }
+    .node b { display:block; margin-bottom:6px; }
+    .tag { display:inline-block; padding:3px 9px; border-radius:999px; font-size:12px; font-weight:700; margin-bottom:6px; }
+    .ack { background:rgba(34,197,94,.14); color:#a9f2c5; }
+    .queue { background:rgba(96,165,250,.14); color:#b9d7ff; }
+    .worker { background:rgba(245,158,11,.14); color:#ffd996; }
+    .state { background:rgba(167,139,250,.14); color:#d8cbff; }
+    .db { background:rgba(248,113,113,.14); color:#ffbcbc; }
+    .arrow { text-align:center; color:var(--muted); font-size:20px; line-height:1; }
+    .mono { font-family:Consolas, "Courier New", monospace; }
+    ul { margin:8px 0 0 18px; }
+    li { margin:3px 0; }
+    .footer { margin-top:14px; border:1px solid var(--line); border-radius:14px; padding:12px 14px; color:var(--muted); background:rgba(255,255,255,.03); }
   </style>
 </head>
 <body>
   <div class="page">
-    <h1>FBServiceExt Webhook Path</h1>
-    <p class="subtitle">Current horizontal flow after the 2026 changes: request-level garbage/voting gates can short-circuit before RabbitMQ, and only business-relevant events continue into the normalized pipeline.</p>
+    <h1>FBServiceExt Webhook Path Diagram</h1>
+    <div class="sub">Current end-to-end path after the stateless voting refactor: fast API ACK, queue-based background flow, runtime <span class="mono">ActiveShowId</span> gate, signed payloads, show-scoped cooldown and configurable <span class="mono">NormalizedEvents</span> persistence.</div>
 
-    <div class="legend">
-      <span class="tag"><span class="dot ack"></span>ACK Path: directly affects webhook response latency</span>
-      <span class="tag"><span class="dot early"></span>Early 200 OK: request ends before queue publish</span>
-      <span class="tag"><span class="dot bg"></span>Background Path: continues only after the response is returned</span>
+    <div class="diagram">
+      <section class="card">
+        <h2>1. API ACK lane</h2>
+        <div class="lane">
+          <div class="node">
+            <span class="tag ack">Meta → API</span>
+            <b>Incoming webhook POST</b>
+            <div>May contain <span class="mono">GET_STARTED</span>, <span class="mono">#forgetme</span>, candidate postback, confirmation postback or garbage traffic.</div>
+          </div>
+          <div class="arrow">↓</div>
+          <div class="node">
+            <span class="tag ack">Controller</span>
+            <b>Read body + inspect + signature validation</b>
+            <ul>
+              <li>body read</li>
+              <li>payload classification</li>
+              <li>Meta signature validation</li>
+            </ul>
+          </div>
+          <div class="arrow">↓</div>
+          <div class="node">
+            <span class="tag ack">Early gates</span>
+            <b>Drop fast when possible</b>
+            <ul>
+              <li>oversized payload</li>
+              <li>garbage traffic</li>
+              <li>voting-disabled regular traffic</li>
+            </ul>
+          </div>
+          <div class="arrow">↓</div>
+          <div class="node">
+            <span class="tag queue">Raw publish</span>
+            <b>AcceptAsync + RabbitMQ raw ingress</b>
+            <div>Once the raw envelope is published, API returns <span class="mono">HTTP 200</span>.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>2. Background worker lane</h2>
+        <div class="lane">
+          <div class="node">
+            <span class="tag queue">Raw worker</span>
+            <b>Normalize raw ingress</b>
+            <div>Creates business-friendly normalized events from raw webhook envelopes.</div>
+          </div>
+          <div class="arrow">↓</div>
+          <div class="node">
+            <span class="tag queue">Business filter</span>
+            <b>Keep only relevant workflow events</b>
+            <ul>
+              <li><span class="mono">GET_STARTED</span></li>
+              <li><span class="mono">#forgetme</span></li>
+              <li>postback payloads</li>
+            </ul>
+          </div>
+          <div class="arrow">↓</div>
+          <div class="node">
+            <span class="tag queue">Normalized queue</span>
+            <b>Publish to <span class="mono">fbserviceext.normalized.events</span></b>
+            <div>Processor workers consume business events from here.</div>
+          </div>
+          <div class="arrow">↓</div>
+          <div class="node">
+            <span class="tag worker">Processor</span>
+            <b>Stateless vote / erase workflow</b>
+            <ul>
+              <li><span class="mono">GET_STARTED</span> → runtime gate → cooldown gate → send signed <span class="mono">VOTE1</span> carousel</li>
+              <li><span class="mono">VOTE1</span> → validate signature + show → send <span class="mono">CONFIRM1</span></li>
+              <li><span class="mono">CONFIRM1</span> → validate signature + show + issuedAt + action → accept vote or recover</li>
+              <li><span class="mono">#forgetme</span> → send signed <span class="mono">ERASE1</span> prompt</li>
+              <li><span class="mono">ERASE1</span> → full erase across DB/Redis/cache</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>3. Runtime state and persistence</h2>
+        <div class="lane">
+          <div class="node">
+            <span class="tag state">Runtime state</span>
+            <b>Operator-controlled gate</b>
+            <ul>
+              <li><span class="mono">VotingStarted</span></li>
+              <li><span class="mono">ActiveShowId</span></li>
+              <li>candidate list from config</li>
+            </ul>
+          </div>
+          <div class="node">
+            <span class="tag state">Secrets</span>
+            <b>Signed payload validation</b>
+            <ul>
+              <li><span class="mono">VotingWorkflow:PayloadSignatureSecret</span></li>
+              <li><span class="mono">DataErasure:ConfirmationPayloadSecret</span></li>
+            </ul>
+          </div>
+          <div class="node">
+            <span class="tag state">Redis state</span>
+            <b>What still lives in Redis</b>
+            <ul>
+              <li>show-scoped cooldown key</li>
+              <li>runtime gate values</li>
+              <li>user account name cache</li>
+            </ul>
+          </div>
+          <div class="node">
+            <span class="tag db">SQL + outbound</span>
+            <b>Persistence and external effects</b>
+            <ul>
+              <li><span class="mono">AcceptedVotes</span> with <span class="mono">ShowId</span> + <span class="mono">UserAccountName</span></li>
+              <li><span class="mono">NormalizedEvents</span> with mode <span class="mono">Full / Minimal / Disabled</span></li>
+              <li>Meta outbound or fake-meta store delivery</li>
+            </ul>
+          </div>
+        </div>
+      </section>
     </div>
 
-    <svg viewBox="0 0 1680 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FBServiceExt webhook path diagram">
-      <defs>
-        <marker id="arrowAck" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#26b38f" />
-        </marker>
-        <marker id="arrowEarly" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#ffb454" />
-        </marker>
-        <marker id="arrowBg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6ea8ff" />
-        </marker>
-      </defs>
-
-      <rect x="20" y="30" width="1640" height="270" rx="18" fill="#10241f" stroke="#1f6a57" stroke-width="2" />
-      <text x="48" y="62" class="section-title">ACK Path</text>
-
-      <rect x="20" y="340" width="1640" height="290" rx="18" fill="#101a29" stroke="#345b8d" stroke-width="2" />
-      <text x="48" y="372" class="section-title">Background Path</text>
-
-      <g>
-        <rect x="40" y="92" width="132" height="110" rx="14" fill="#16352e" stroke="#2ec7a1" />
-        <text x="106" y="118" class="block-title">Meta POST</text>
-        <text x="106" y="138" class="block-text">/api/facebook/webhooks</text>
-        <text x="106" y="176" class="ref-text">FacebookWebhooksController</text>
-
-        <rect x="190" y="92" width="132" height="110" rx="14" fill="#16352e" stroke="#2ec7a1" />
-        <text x="256" y="118" class="block-title">Controller.Receive</text>
-        <text x="256" y="138" class="block-text">request entry point</text>
-        <text x="256" y="176" class="ref-text">Receive(): L78-L216</text>
-
-        <rect x="340" y="92" width="138" height="110" rx="14" fill="#16352e" stroke="#2ec7a1" />
-        <text x="409" y="118" class="block-title">Read body</text>
-        <text x="409" y="138" class="block-text">ReadToEndAsync</text>
-        <text x="409" y="154" class="block-text">content-length guard</text>
-        <text x="409" y="176" class="ref-text">Controller L95-L116</text>
-
-        <rect x="496" y="92" width="150" height="110" rx="14" fill="#16352e" stroke="#2ec7a1" />
-        <text x="571" y="118" class="block-title">Inspect payload</text>
-        <text x="571" y="138" class="block-text">classify postback /</text>
-        <text x="571" y="154" class="block-text">GET_STARTED / #forgetme / garbage</text>
-        <text x="571" y="176" class="ref-text">Controller L118-L122 + Inspector</text>
-
-        <rect x="664" y="92" width="132" height="110" rx="14" fill="#16352e" stroke="#2ec7a1" />
-        <text x="730" y="118" class="block-title">Validate signature</text>
-        <text x="730" y="138" class="block-text">X-Hub-Signature-256</text>
-        <text x="730" y="176" class="ref-text">Controller L124-L145</text>
-
-        <rect x="814" y="92" width="190" height="110" rx="14" fill="#3a2b17" stroke="#ffb454" />
-        <text x="909" y="118" class="block-title">Early request gates</text>
-        <text x="909" y="138" class="block-text">garbage-only -&gt; 200 OK</text>
-        <text x="909" y="154" class="block-text">VotingStarted off and no bypass -&gt; 200 OK</text>
-        <text x="909" y="176" class="ref-text">Controller L156-L192 + RedisVotingGate</text>
-
-        <rect x="1022" y="92" width="140" height="110" rx="14" fill="#16352e" stroke="#2ec7a1" />
-        <text x="1092" y="118" class="block-title">AcceptAsync</text>
-        <text x="1092" y="138" class="block-text">create envelope</text>
-        <text x="1092" y="154" class="block-text">await publish path</text>
-        <text x="1092" y="176" class="ref-text">WebhookIngressService L35-L71</text>
-
-        <rect x="1180" y="92" width="190" height="110" rx="14" fill="#16352e" stroke="#2ec7a1" />
-        <text x="1275" y="118" class="block-title">Publisher pool +</text>
-        <text x="1275" y="136" class="block-title">RabbitMQ raw publish</text>
-        <text x="1275" y="154" class="block-text">rent channel - declare - BasicPublish</text>
-        <text x="1275" y="176" class="ref-text">RawIngressPublisher L39-L129</text>
-
-        <rect x="1388" y="92" width="130" height="110" rx="14" fill="#16352e" stroke="#2ec7a1" />
-        <text x="1453" y="118" class="block-title">return Ok()</text>
-        <text x="1453" y="138" class="block-text">HTTP 200</text>
-        <text x="1453" y="176" class="ref-text">Controller L215-L216</text>
-
-        <rect x="830" y="222" width="158" height="54" rx="12" fill="#3a2b17" stroke="#ffb454" stroke-dasharray="8 6" />
-        <text x="909" y="246" class="block-title">Early 200 OK</text>
-        <text x="909" y="264" class="block-text">no queue publish</text>
-      </g>
-
-      <g stroke="#26b38f" stroke-width="4" fill="none" marker-end="url(#arrowAck)">
-        <path d="M172 146 H190" />
-        <path d="M322 146 H340" />
-        <path d="M478 146 H496" />
-        <path d="M646 146 H664" />
-        <path d="M796 146 H814" />
-        <path d="M1004 146 H1022" />
-        <path d="M1162 146 H1180" />
-        <path d="M1370 146 H1388" />
-      </g>
-
-      <g stroke="#ffb454" stroke-width="3" fill="none" stroke-dasharray="8 6" marker-end="url(#arrowEarly)">
-        <path d="M909 202 V222" />
-      </g>
-
-      <g>
-        <rect x="55" y="405" width="180" height="120" rx="14" fill="#16263c" stroke="#6ea8ff" />
-        <text x="145" y="430" class="block-title">RawIngressNormalizerWorker</text>
-        <text x="145" y="450" class="block-text">receive raw envelope</text>
-        <text x="145" y="488" class="ref-text">RawIngressNormalizerWorker</text>
-        <text x="145" y="502" class="ref-text">RunLoopAsync(): L70-L109</text>
-
-        <rect x="255" y="405" width="180" height="120" rx="14" fill="#16263c" stroke="#6ea8ff" />
-        <text x="345" y="430" class="block-title">Normalize events</text>
-        <text x="345" y="450" class="block-text">entry[] / messaging[]</text>
-        <text x="345" y="466" class="block-text">stable eventId from mid/hash</text>
-        <text x="345" y="488" class="ref-text">RawWebhookNormalizer L12-L67</text>
-
-        <rect x="455" y="405" width="185" height="120" rx="14" fill="#16263c" stroke="#6ea8ff" />
-        <text x="547.5" y="430" class="block-title">Filter business events</text>
-        <text x="547.5" y="450" class="block-text">drop garbage again</text>
-        <text x="547.5" y="466" class="block-text">keep postback / GET_STARTED / #forgetme</text>
-        <text x="547.5" y="488" class="ref-text">FilterBusinessEvents(): L129-L149</text>
-
-        <rect x="660" y="405" width="180" height="120" rx="14" fill="#16263c" stroke="#6ea8ff" />
-        <text x="750" y="430" class="block-title">Publish normalized queue</text>
-        <text x="750" y="450" class="block-text">one item per business event</text>
-        <text x="750" y="488" class="ref-text">RunLoopAsync(): L104-L107</text>
-
-        <rect x="860" y="405" width="190" height="120" rx="14" fill="#16263c" stroke="#6ea8ff" />
-        <text x="955" y="430" class="block-title">NormalizedEventProcessorWorker</text>
-        <text x="955" y="450" class="block-text">receive normalized event</text>
-        <text x="955" y="488" class="ref-text">ProcessorWorker L58-L68</text>
-
-        <rect x="1070" y="405" width="220" height="120" rx="14" fill="#16263c" stroke="#6ea8ff" />
-        <text x="1180" y="430" class="block-title">Dedupe + user lock +</text>
-        <text x="1180" y="448" class="block-title">voting gate + state machine</text>
-        <text x="1180" y="466" class="block-text">cooldown, confirmation, erasure</text>
-        <text x="1180" y="488" class="ref-text">NormalizedEventProcessor</text>
-        <text x="1180" y="502" class="ref-text">ProcessAsync L134-L174</text>
-
-        <rect x="1310" y="405" width="290" height="120" rx="14" fill="#16263c" stroke="#6ea8ff" />
-        <text x="1455" y="430" class="block-title">Outbound Messenger + Redis / SQL</text>
-        <text x="1455" y="450" class="block-text">carousel, confirmation, cooldown text,</text>
-        <text x="1455" y="466" class="block-text">forgetme prompt / erase, accepted vote persistence</text>
-        <text x="1455" y="488" class="ref-text">MetaMessengerClient L26-L143</text>
-        <text x="1455" y="502" class="ref-text">Processor branches L183-L559</text>
-      </g>
-
-      <g stroke="#6ea8ff" stroke-width="4" fill="none" marker-end="url(#arrowBg)">
-        <path d="M235 465 H255" />
-        <path d="M435 465 H455" />
-        <path d="M640 465 H660" />
-        <path d="M840 465 H860" />
-        <path d="M1050 465 H1070" />
-        <path d="M1290 465 H1310" />
-      </g>
-
-      <path d="M1453 202 V292 H145 V405" stroke="#8fbfff" stroke-width="3" fill="none" stroke-dasharray="10 8" marker-end="url(#arrowBg)" />
-      <text x="1280" y="286" class="block-text" fill="#9fc9ff">background pipeline starts only after HTTP 200 is returned</text>
-
-      <rect x="55" y="548" width="1545" height="58" rx="14" fill="#131b25" stroke="#263243" />
-      <text x="78" y="572" font-size="14" font-weight="700" fill="#f8fbff">Key takeaways</text>
-      <text x="78" y="592" font-size="13" fill="#cbd8e6">1) garbage-only and voting-disabled traffic can short-circuit before RabbitMQ, 2) raw worker drops non-business events again, 3) the main awaited network hop before 200 OK is still the raw-queue publish.</text>
-    </svg>
-
-    <div class="note">
-      <strong>Current validated operating point:</strong> in the <strong>Performance</strong> profile the system was validated at <strong>500 incoming events/sec for 5 minutes</strong> with <strong>1 API + 1 Worker</strong>, including batched webhook shapes (<code>EventsPerRequest = 1 / 2 / 3</code>).
+    <div class="footer">
+      The key architectural distinction now is simple: the API host only admits and publishes webhook traffic, while actual voting logic lives entirely in background workers. No vote session snapshots remain; correctness comes from signed payloads, <span class="mono">ActiveShowId</span>, cooldown keys, and final writes to <span class="mono">AcceptedVotes</span>.
     </div>
   </div>
 </body>

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -24,6 +24,9 @@
     <ProjectReference Include="..\..\src\GameController.FBServiceExt.Domain\GameController.FBServiceExt.Domain.csproj" SkipGetTargetFrameworkProperties="true" />
     <ProjectReference Include="..\..\src\GameController.FBServiceExt.Infrastructure\GameController.FBServiceExt.Infrastructure.csproj" SkipGetTargetFrameworkProperties="true" />
     <ProjectReference Include="..\..\src\GameController.FBServiceExt\GameController.FBServiceExt.csproj" SkipGetTargetFrameworkProperties="true" />
+    <ProjectReference Include="..\..\src\GameController.FBServiceExt.FakeFBForSimulate\GameController.FBServiceExt.FakeFBForSimulate.csproj" SkipGetTargetFrameworkProperties="true" />
   </ItemGroup>
 
 </Project>
+
+

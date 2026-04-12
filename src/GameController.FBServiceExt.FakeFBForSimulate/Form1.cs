@@ -10,32 +10,41 @@ namespace GameController.FBServiceExt.FakeFBForSimulate;
 
 internal sealed class Form1 : Form
 {
-    private static readonly IReadOnlyDictionary<string, string> MetricHints = new Dictionary<string, string>(StringComparer.Ordinal)
+        private static readonly IReadOnlyDictionary<string, string> MetricHints = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        ["Running"] = "????????, ???????????? ?? ??? ????????? ?? ????????.",
-        ["StartedAtUtc"] = "???? ????????? ?????????? ???????? UTC ???.",
-        ["ConfiguredUsers"] = "??????? fake user ??? ?????????? ????????? run-??????.",
-        ["ConfiguredWorkers"] = "??????? managed worker ???? ??????? simulator-??.",
-        ["ManagedWorkersRunning"] = "??????????? ???? ????????? worker-?????? ??????? ???????? ???????.",
-        ["DetectedWorkerInstances"] = "metrics endpoint-?? ?????????? ????? worker instance-?? ?????????.",
-        ["UnmanagedWorkerInstances"] = "?????????? worker-?????? ??????? ?? ??????? ?? simulator run-?. ????? ????? ?? ??????? ????????? ??????????.",
-        ["ActiveUsers"] = "?? ???? ??????? fake user ???????? flow-? ????????.",
-        ["CyclesStarted"] = "??????? ????? voting ????? ??????.",
-        ["CyclesCompleted"] = "??????? ????? ???????? accepted ??????? ???????.",
-        ["CyclesFailed"] = "??????? ????? ???????? ???????????? timeout-?? ?? ?????????? ??????? ????.",
-        ["WebhookAttempts"] = "??????? inbound webhook request ????????? API-??.",
-        ["WebhookSuccesses"] = "?????? webhook request-?? ???????? ??????????? HTTP ??????.",
-        ["WebhookFailures"] = "??????? webhook request ??????? transport ?? HTTP ????????.",
-        ["OutboundMessagesReceived"] = "worker-?????? callback listener-?? ???????? outbound payload-???? ?????? ?????????.",
-        ["CarouselsReceived"] = "????????? ????? simulator-?? ???????????? carousel.",
-        ["ConfirmationsReceived"] = "????????? ????? simulator-?? confirmation challenge.",
-        ["AcceptedTextsReceived"] = "????????? ?????? ??????? accepted ??????.",
-        ["CooldownTextsReceived"] = "????????? ?????? cooldown ??????.",
-        ["RejectedTextsReceived"] = "????????? ?????? ????????? confirmation-?? ??????.",
-        ["ExpiredTextsReceived"] = "????????? ?????? expired confirmation-?? ??????.",
-        ["OtherTextsReceived"] = "??????? ???????? ?????? ??????, ??????? ?????? ???????????? ??? ??????.",
-        ["UnexpectedOutboundShapes"] = "??????? outbound payload ??? simulator-?????? ?????????? ????????.",
-        ["AverageCompletedCycleMs"] = "?????????? ??????????? ???????? ??????? ???????????? ???????????."
+        ["Running"] = "Whether the simulator is currently running.",
+        ["StartedAtUtc"] = "UTC time when the current run started.",
+        ["OutboundTransportMode"] = "How outbound worker messages reach the simulator.",
+        ["ConfiguredUsers"] = "Number of fake users configured for the run.",
+        ["ConfiguredWorkers"] = "Number of managed worker processes requested for the run.",
+        ["ManagedWorkersRunning"] = "Managed worker processes that are still running.",
+        ["DetectedWorkerInstances"] = "Worker instances reported by backend metrics.",
+        ["UnmanagedWorkerInstances"] = "Worker instances that are running but are not managed by this simulator run.",
+        ["ActiveUsers"] = "Fake users currently inside a voting cycle.",
+        ["CyclesStarted"] = "Voting cycles started by fake users.",
+        ["CyclesCompleted"] = "Voting cycles that reached an accepted vote response.",
+        ["CyclesFailed"] = "Voting cycles that ended in timeout or non-success outcome.",
+        ["WebhookAttempts"] = "Inbound webhook requests sent to the FBServiceExt API.",
+        ["WebhookSuccesses"] = "Webhook requests accepted successfully by the API.",
+        ["WebhookFailures"] = "Webhook requests that failed at transport or HTTP level.",
+        ["OutboundMessagesReceived"] = "Outbound payloads received back from workers.",
+        ["CarouselsReceived"] = "Candidate carousel payloads recognized by the simulator.",
+        ["ConfirmationsReceived"] = "Confirmation challenge payloads recognized by the simulator.",
+        ["AcceptedTextsReceived"] = "Accepted vote texts received at the expected final stage.",
+        ["CooldownTextsReceived"] = "Cooldown texts received from the worker flow.",
+        ["RejectedTextsReceived"] = "Rejected confirmation texts received from the worker flow.",
+        ["ExpiredTextsReceived"] = "Expired confirmation texts received from the worker flow.",
+        ["InactiveVotingTextsReceived"] = "Inactive voting texts received from the worker flow.",
+        ["OtherTextsReceived"] = "Text messages that did not match any known simulator classification.",
+        ["CarouselTimeouts"] = "Cycles that timed out while waiting for the initial candidate carousel.",
+        ["ConfirmationTimeouts"] = "Cycles that timed out while waiting for the confirmation challenge.",
+        ["FinalTextTimeouts"] = "Cycles that timed out while waiting for the final text response.",
+        ["CarouselShapeFailures"] = "Carousel payloads that arrived but did not contain a usable vote button.",
+        ["ConfirmationShapeFailures"] = "Confirmation payloads that arrived but did not contain a usable accept button.",
+        ["StageUnexpectedTexts"] = "Unexpected text messages received while waiting for a non-text stage payload.",
+        ["LateAcceptedTexts"] = "Accepted texts that arrived at the wrong stage and were treated as late/out-of-order.",
+        ["UnexpectedOutboundShapes"] = "Aggregate simulator-side outbound mismatch count retained for compatibility.",
+        ["AverageCompletedCycleMs"] = "Average duration of completed voting cycles in milliseconds."
     };
 
     private static readonly IReadOnlyDictionary<int, string> WorkerColumnHints = new Dictionary<int, string>
@@ -78,6 +87,7 @@ internal sealed class Form1 : Form
     private TextBox _pageIdTextBox = null!;
     private TextBox _appSecretTextBox = null!;
     private TextBox _startTokenTextBox = null!;
+    private TextBox _activeShowIdTextBox = null!;
     private NumericUpDown _userCountInput = null!;
     private NumericUpDown _durationSecondsInput = null!;
     private NumericUpDown _cooldownSecondsInput = null!;
@@ -215,6 +225,7 @@ internal sealed class Form1 : Form
         _pageIdTextBox = CreateTextBox();
         _appSecretTextBox = CreateTextBox(usePassword: true);
         _startTokenTextBox = CreateTextBox();
+        _activeShowIdTextBox = CreateTextBox();
         _userCountInput = CreateNumericInput(1, 100000, 200);
         _durationSecondsInput = CreateNumericInput(10, 86400, 300);
         _cooldownSecondsInput = CreateNumericInput(0, 3600, 60);
@@ -226,11 +237,11 @@ internal sealed class Form1 : Form
 
         AddSettingRow(0, "Webhook URL", _webhookUrlTextBox, "Fake Meta URL", _listenerUrlTextBox);
         AddSettingRow(1, "Page ID", _pageIdTextBox, "App Secret", _appSecretTextBox);
-        AddSettingRow(2, "Start Token", _startTokenTextBox, "Fake Users", _userCountInput);
-        AddSettingRow(3, "Duration (sec)", _durationSecondsInput, "Cooldown (sec)", _cooldownSecondsInput);
-        AddSettingRow(4, "Startup Jitter (sec)", _startupJitterSecondsInput, "Min Think (ms)", _minThinkMillisecondsInput);
-        AddSettingRow(5, "Max Think (ms)", _maxThinkMillisecondsInput, "Outbound Wait (sec)", _outboundWaitSecondsInput);
-        AddSettingRow(6, "Managed Workers", _managedWorkerCountInput, string.Empty, new Panel { Width = 1, Height = 1, Dock = DockStyle.Top });
+        AddSettingRow(2, "Start Token", _startTokenTextBox, "Active Show ID", _activeShowIdTextBox);
+        AddSettingRow(3, "Duration (sec)", _durationSecondsInput, "Fake Users", _userCountInput);
+        AddSettingRow(4, "Cooldown (sec)", _cooldownSecondsInput, "Startup Jitter (sec)", _startupJitterSecondsInput);
+        AddSettingRow(5, "Min Think (ms)", _minThinkMillisecondsInput, "Max Think (ms)", _maxThinkMillisecondsInput);
+        AddSettingRow(6, "Outbound Wait (sec)", _outboundWaitSecondsInput, "Managed Workers", _managedWorkerCountInput);
 
         settingsGroup.Controls.Add(_settingsTable);
         root.Controls.Add(settingsGroup, 0, 0);
@@ -399,6 +410,7 @@ internal sealed class Form1 : Form
         _pageIdTextBox.Text = defaults.PageId;
         _appSecretTextBox.Text = defaults.AppSecret;
         _startTokenTextBox.Text = defaults.StartToken;
+        _activeShowIdTextBox.Text = defaults.ActiveShowId;
         _userCountInput.Value = defaults.DefaultUserCount;
         _durationSecondsInput.Value = defaults.DefaultDurationSeconds;
         _cooldownSecondsInput.Value = defaults.DefaultCooldownSeconds;
@@ -413,6 +425,7 @@ internal sealed class Form1 : Form
     {
         AddMetricRow("Running");
         AddMetricRow("StartedAtUtc");
+        AddMetricRow("OutboundTransportMode");
         AddMetricRow("ConfiguredUsers");
         AddMetricRow("ConfiguredWorkers");
         AddMetricRow("ManagedWorkersRunning");
@@ -432,7 +445,15 @@ internal sealed class Form1 : Form
         AddMetricRow("CooldownTextsReceived");
         AddMetricRow("RejectedTextsReceived");
         AddMetricRow("ExpiredTextsReceived");
+        AddMetricRow("InactiveVotingTextsReceived");
         AddMetricRow("OtherTextsReceived");
+        AddMetricRow("CarouselTimeouts");
+        AddMetricRow("ConfirmationTimeouts");
+        AddMetricRow("FinalTextTimeouts");
+        AddMetricRow("CarouselShapeFailures");
+        AddMetricRow("ConfirmationShapeFailures");
+        AddMetricRow("StageUnexpectedTexts");
+        AddMetricRow("LateAcceptedTexts");
         AddMetricRow("UnexpectedOutboundShapes");
         AddMetricRow("AverageCompletedCycleMs");
     }
@@ -460,35 +481,45 @@ internal sealed class Form1 : Form
         {
             _latestManagedWorkers = _managedWorkerManager.GetManagedProcesses();
             var snapshot = _engine.GetSnapshot();
-        SetMetric("Running", snapshot.IsRunning ? "Yes" : "No");
-        SetMetric("StartedAtUtc", snapshot.StartedAtUtc?.ToString("u") ?? "-");
-        SetMetric("ConfiguredUsers", snapshot.ConfiguredUsers.ToString("N0"));
-        SetMetric("ConfiguredWorkers", _managedWorkerCountInput.Value.ToString("N0"));
-        SetMetric("ManagedWorkersRunning", _latestManagedWorkers.Count(static worker => worker.IsRunning).ToString("N0"));
-        SetMetric("DetectedWorkerInstances", _latestWorkerSnapshots.Count.ToString("N0"));
-        SetMetric("UnmanagedWorkerInstances", _latestWorkerSnapshots.Count(worker => !worker.IsManaged).ToString("N0"));
-        SetMetric("ActiveUsers", snapshot.ActiveUsers.ToString("N0"));
-        SetMetric("CyclesStarted", snapshot.CyclesStarted.ToString("N0"));
-        SetMetric("CyclesCompleted", snapshot.CyclesCompleted.ToString("N0"));
-        SetMetric("CyclesFailed", snapshot.CyclesFailed.ToString("N0"));
-        SetMetric("WebhookAttempts", snapshot.WebhookAttempts.ToString("N0"));
-        SetMetric("WebhookSuccesses", snapshot.WebhookSuccesses.ToString("N0"));
-        SetMetric("WebhookFailures", snapshot.WebhookFailures.ToString("N0"));
-        SetMetric("OutboundMessagesReceived", snapshot.OutboundMessagesReceived.ToString("N0"));
-        SetMetric("CarouselsReceived", snapshot.CarouselsReceived.ToString("N0"));
-        SetMetric("ConfirmationsReceived", snapshot.ConfirmationsReceived.ToString("N0"));
-        SetMetric("AcceptedTextsReceived", snapshot.AcceptedTextsReceived.ToString("N0"));
-        SetMetric("CooldownTextsReceived", snapshot.CooldownTextsReceived.ToString("N0"));
-        SetMetric("RejectedTextsReceived", snapshot.RejectedTextsReceived.ToString("N0"));
-        SetMetric("ExpiredTextsReceived", snapshot.ExpiredTextsReceived.ToString("N0"));
-        SetMetric("OtherTextsReceived", snapshot.OtherTextsReceived.ToString("N0"));
-        SetMetric("UnexpectedOutboundShapes", snapshot.UnexpectedOutboundShapes.ToString("N0"));
-        SetMetric("AverageCompletedCycleMs", snapshot.AverageCompletedCycleMilliseconds.ToString("N2"));
 
-        var unmanagedCount = _latestWorkerSnapshots.Count(worker => !worker.IsManaged);
-        _statusLabel.Text = snapshot.IsRunning
-            ? $"Status: Running ({snapshot.ActiveUsers:N0} active fake users, {unmanagedCount:N0} unmanaged worker detected)"
-            : $"Status: Idle ({unmanagedCount:N0} unmanaged worker detected)";
+            SetMetric("Running", snapshot.IsRunning ? "Yes" : "No");
+            SetMetric("StartedAtUtc", snapshot.StartedAtUtc?.ToString("u") ?? "-");
+            SetMetric("OutboundTransportMode", snapshot.OutboundTransportMode);
+            SetMetric("ConfiguredUsers", snapshot.ConfiguredUsers.ToString("N0"));
+            SetMetric("ConfiguredWorkers", _managedWorkerCountInput.Value.ToString("N0"));
+            SetMetric("ManagedWorkersRunning", _latestManagedWorkers.Count(static worker => worker.IsRunning).ToString("N0"));
+            SetMetric("DetectedWorkerInstances", _latestWorkerSnapshots.Count.ToString("N0"));
+            SetMetric("UnmanagedWorkerInstances", _latestWorkerSnapshots.Count(worker => !worker.IsManaged).ToString("N0"));
+            SetMetric("ActiveUsers", snapshot.ActiveUsers.ToString("N0"));
+            SetMetric("CyclesStarted", snapshot.CyclesStarted.ToString("N0"));
+            SetMetric("CyclesCompleted", snapshot.CyclesCompleted.ToString("N0"));
+            SetMetric("CyclesFailed", snapshot.CyclesFailed.ToString("N0"));
+            SetMetric("WebhookAttempts", snapshot.WebhookAttempts.ToString("N0"));
+            SetMetric("WebhookSuccesses", snapshot.WebhookSuccesses.ToString("N0"));
+            SetMetric("WebhookFailures", snapshot.WebhookFailures.ToString("N0"));
+            SetMetric("OutboundMessagesReceived", snapshot.OutboundMessagesReceived.ToString("N0"));
+            SetMetric("CarouselsReceived", snapshot.CarouselsReceived.ToString("N0"));
+            SetMetric("ConfirmationsReceived", snapshot.ConfirmationsReceived.ToString("N0"));
+            SetMetric("AcceptedTextsReceived", snapshot.AcceptedTextsReceived.ToString("N0"));
+            SetMetric("CooldownTextsReceived", snapshot.CooldownTextsReceived.ToString("N0"));
+            SetMetric("RejectedTextsReceived", snapshot.RejectedTextsReceived.ToString("N0"));
+            SetMetric("ExpiredTextsReceived", snapshot.ExpiredTextsReceived.ToString("N0"));
+            SetMetric("InactiveVotingTextsReceived", snapshot.InactiveVotingTextsReceived.ToString("N0"));
+            SetMetric("OtherTextsReceived", snapshot.OtherTextsReceived.ToString("N0"));
+            SetMetric("CarouselTimeouts", snapshot.CarouselTimeouts.ToString("N0"));
+            SetMetric("ConfirmationTimeouts", snapshot.ConfirmationTimeouts.ToString("N0"));
+            SetMetric("FinalTextTimeouts", snapshot.FinalTextTimeouts.ToString("N0"));
+            SetMetric("CarouselShapeFailures", snapshot.CarouselShapeFailures.ToString("N0"));
+            SetMetric("ConfirmationShapeFailures", snapshot.ConfirmationShapeFailures.ToString("N0"));
+            SetMetric("StageUnexpectedTexts", snapshot.StageUnexpectedTexts.ToString("N0"));
+            SetMetric("LateAcceptedTexts", snapshot.LateAcceptedTexts.ToString("N0"));
+            SetMetric("UnexpectedOutboundShapes", snapshot.UnexpectedOutboundShapes.ToString("N0"));
+            SetMetric("AverageCompletedCycleMs", snapshot.AverageCompletedCycleMilliseconds.ToString("N2"));
+
+            var unmanagedCount = _latestWorkerSnapshots.Count(worker => !worker.IsManaged);
+            _statusLabel.Text = snapshot.IsRunning
+                ? $"Status: Running ({snapshot.ActiveUsers:N0} active fake users, {unmanagedCount:N0} unmanaged worker detected)"
+                : $"Status: Idle ({unmanagedCount:N0} unmanaged worker detected)";
 
             SetRunningState(snapshot.IsRunning);
         }
@@ -756,10 +787,13 @@ internal sealed class Form1 : Form
             (int)_outboundWaitSecondsInput.Value,
             _defaults.DefaultFailureBackoffMinSeconds,
             _defaults.DefaultFailureBackoffMaxSeconds,
+            _activeShowIdTextBox.Text.Trim(),
+            _defaults.ConfigureVotingGateOnStart,
             new SimulatorTextPatterns(
                 _defaults.CooldownTextFragments,
                 _defaults.RejectedTextFragments,
-                _defaults.ExpiredTextFragments));
+                _defaults.ExpiredTextFragments,
+                _defaults.InactiveVotingTextFragments));
     }
 
     private void SaveSummaryButtonOnClick(object? sender, EventArgs e)
@@ -829,7 +863,7 @@ internal sealed class Form1 : Form
         return null;
     }
 
-    private static string BuildSummaryText(SimulatorRunSummary summary, string jsonPath)
+        private static string BuildSummaryText(SimulatorRunSummary summary, string jsonPath)
     {
         var builder = new StringBuilder();
         builder.AppendLine("FakeFB Simulator Summary");
@@ -853,6 +887,7 @@ internal sealed class Form1 : Form
         builder.AppendLine();
         builder.AppendLine("Snapshot");
         builder.AppendLine($"  Running: {summary.Snapshot.IsRunning}");
+        builder.AppendLine($"  OutboundTransportMode: {summary.Snapshot.OutboundTransportMode}");
         builder.AppendLine($"  StartedAtUtc: {(summary.Snapshot.StartedAtUtc?.ToString("u") ?? "-")}");
         builder.AppendLine($"  CyclesStarted: {summary.Snapshot.CyclesStarted}");
         builder.AppendLine($"  CyclesCompleted: {summary.Snapshot.CyclesCompleted}");
@@ -861,6 +896,13 @@ internal sealed class Form1 : Form
         builder.AppendLine($"  WebhookSuccesses: {summary.Snapshot.WebhookSuccesses}");
         builder.AppendLine($"  WebhookFailures: {summary.Snapshot.WebhookFailures}");
         builder.AppendLine($"  AcceptedTextsReceived: {summary.Snapshot.AcceptedTextsReceived}");
+        builder.AppendLine($"  LateAcceptedTexts: {summary.Snapshot.LateAcceptedTexts}");
+        builder.AppendLine($"  StageUnexpectedTexts: {summary.Snapshot.StageUnexpectedTexts}");
+        builder.AppendLine($"  CarouselTimeouts: {summary.Snapshot.CarouselTimeouts}");
+        builder.AppendLine($"  ConfirmationTimeouts: {summary.Snapshot.ConfirmationTimeouts}");
+        builder.AppendLine($"  FinalTextTimeouts: {summary.Snapshot.FinalTextTimeouts}");
+        builder.AppendLine($"  CarouselShapeFailures: {summary.Snapshot.CarouselShapeFailures}");
+        builder.AppendLine($"  ConfirmationShapeFailures: {summary.Snapshot.ConfirmationShapeFailures}");
         builder.AppendLine($"  UnexpectedOutboundShapes: {summary.Snapshot.UnexpectedOutboundShapes}");
         builder.AppendLine($"  AverageCompletedCycleMs: {summary.Snapshot.AverageCompletedCycleMilliseconds:N2}");
         builder.AppendLine();
@@ -1274,6 +1316,8 @@ internal sealed record SimulatorRunSummary(
     IReadOnlyList<WorkerInstanceLoadSnapshot> WorkerSnapshots,
     IReadOnlyDictionary<string, string> Metrics,
     IReadOnlyList<string> LogLines);
+
+
 
 
 

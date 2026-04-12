@@ -1,10 +1,11 @@
-using System.Reflection;
 using System.Diagnostics;
+using System.Reflection;
 using GameController.FBServiceExt.Application;
 using GameController.FBServiceExt.Infrastructure;
 using GameController.FBServiceExt.Infrastructure.Logging;
 using GameController.FBServiceExt.Worker.Options;
 using GameController.FBServiceExt.Worker.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Serilog;
 
@@ -17,18 +18,34 @@ try
     var builder = Host.CreateApplicationBuilder(args);
 
     var environmentName = builder.Environment.EnvironmentName;
+    var shouldLoadUserSecrets = builder.Environment.IsDevelopment();
     builder.Configuration.Sources.Clear();
-    AddSharedJsonFiles(builder.Configuration, builder.Environment.ContentRootPath, environmentName);
+    var sharedConfigPaths = AddSharedJsonFiles(builder.Configuration, builder.Environment.ContentRootPath, environmentName);
     builder.Configuration
         .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-        .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true)
-        .AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true)
-        .AddEnvironmentVariables();
+        .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true);
+
+    if (shouldLoadUserSecrets)
+    {
+        builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true);
+    }
+
+    builder.Configuration.AddEnvironmentVariables();
 
     if (args is { Length: > 0 })
     {
         builder.Configuration.AddCommandLine(args);
     }
+
+    Log.Information(
+        "Worker configuration initialized. Environment={EnvironmentName}, ContentRoot={ContentRootPath}, SharedConfigs={SharedConfigs}, UserSecretsLoaded={UserSecretsLoaded}, VotingSecretConfigured={VotingSecretConfigured}, DataErasureSecretConfigured={DataErasureSecretConfigured}",
+        environmentName,
+        builder.Environment.ContentRootPath,
+        sharedConfigPaths,
+        shouldLoadUserSecrets,
+        HasConfiguredSecret(builder.Configuration, "VotingWorkflow:PayloadSignatureSecret"),
+        HasConfiguredSecret(builder.Configuration, "DataErasure:ConfirmationPayloadSecret"));
+
     builder.Logging.Configure(options =>
     {
         options.ActivityTrackingOptions =
@@ -78,33 +95,60 @@ finally
     Log.CloseAndFlush();
 }
 
-static void AddSharedJsonFiles(IConfigurationBuilder configurationBuilder, string contentRootPath, string environmentName)
+static string[] AddSharedJsonFiles(IConfigurationBuilder configurationBuilder, string contentRootPath, string environmentName)
 {
-    foreach (var sharedPath in ResolveSharedConfigPaths(contentRootPath, environmentName))
+    var sharedPaths = ResolveSharedConfigPaths(contentRootPath, environmentName).ToArray();
+    foreach (var sharedPath in sharedPaths)
     {
         configurationBuilder.AddJsonFile(sharedPath, optional: false, reloadOnChange: true);
     }
+
+    return sharedPaths;
 }
+
 static IEnumerable<string> ResolveSharedConfigPaths(string contentRootPath, string environmentName)
 {
-    var candidateRoots = new[]
+    foreach (var root in EnumerateCandidateRoots(contentRootPath))
     {
-        contentRootPath,
-        Path.GetFullPath(Path.Combine(contentRootPath, "..", ".."))
-    };
-    foreach (var root in candidateRoots.Distinct(StringComparer.OrdinalIgnoreCase))
-    {
-        var shared = Path.Combine(root, "appsettings.Shared.json");
+        var shared = Path.Combine(root.FullName, "appsettings.Shared.json");
         if (!File.Exists(shared))
         {
             continue;
         }
+
         yield return shared;
-        var environmentShared = Path.Combine(root, $"appsettings.Shared.{environmentName}.json");
+        var environmentShared = Path.Combine(root.FullName, $"appsettings.Shared.{environmentName}.json");
         if (File.Exists(environmentShared))
         {
             yield return environmentShared;
         }
+
         yield break;
     }
 }
+
+static IEnumerable<DirectoryInfo> EnumerateCandidateRoots(string contentRootPath)
+{
+    var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var startPath in new[]
+             {
+                 contentRootPath,
+                 AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+             })
+    {
+        if (string.IsNullOrWhiteSpace(startPath) || !Directory.Exists(startPath))
+        {
+            continue;
+        }
+
+        var current = new DirectoryInfo(startPath);
+        while (current is not null && seen.Add(current.FullName))
+        {
+            yield return current;
+            current = current.Parent;
+        }
+    }
+}
+
+static bool HasConfiguredSecret(IConfiguration configuration, string key)
+    => !string.IsNullOrWhiteSpace(configuration[key]);

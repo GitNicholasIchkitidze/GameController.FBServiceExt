@@ -25,17 +25,27 @@ internal static class Program
             };
         }
 
-        var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
-        var defaults = SimulatorDefaults.Load(settingsPath);
-
-        if (args.Any(static arg => string.Equals(arg, "--headless", StringComparison.OrdinalIgnoreCase)))
+        try
         {
-            return HeadlessSimulatorRunner.RunAsync(defaults, args).GetAwaiter().GetResult();
-        }
+            var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            var defaults = SimulatorDefaults.Load(settingsPath);
 
-        ApplicationConfiguration.Initialize();
-        Application.Run(new Form1(defaults));
-        return 0;
+            if (args.Any(static arg => string.Equals(arg, "--headless", StringComparison.OrdinalIgnoreCase)))
+            {
+                return HeadlessSimulatorRunner.RunAsync(defaults, args).GetAwaiter().GetResult();
+            }
+
+            ApplicationConfiguration.Initialize();
+            Application.Run(new Form1(defaults));
+            return 0;
+        }
+        catch (Exception exception)
+        {
+            var errorPath = Path.Combine(AppContext.BaseDirectory, "startup-error.txt");
+            File.WriteAllText(errorPath, exception.ToString());
+            MessageBox.Show(exception.ToString(), "FakeFBForSimulate Startup Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return -1;
+        }
     }
 }
 
@@ -46,6 +56,8 @@ internal sealed class SimulatorDefaults
     public string PageId { get; init; } = "PAGE_ID_SIMULATOR";
     public string AppSecret { get; init; } = string.Empty;
     public string StartToken { get; init; } = "GET_STARTED";
+    public string ActiveShowId { get; init; } = "show1";
+    public bool ConfigureVotingGateOnStart { get; init; } = true;
     public int DefaultUserCount { get; init; } = 200;
     public int DefaultDurationSeconds { get; init; } = 300;
     public int DefaultCooldownSeconds { get; init; } = 60;
@@ -58,6 +70,7 @@ internal sealed class SimulatorDefaults
     public IReadOnlyList<string> CooldownTextFragments { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> RejectedTextFragments { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> ExpiredTextFragments { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> InactiveVotingTextFragments { get; init; } = Array.Empty<string>();
     public string SqlConnectionString { get; init; } = "Server=127.0.0.1,14333;Database=GameControllerFBServiceExt;User ID=sa;Password=FbServiceExt_Strong_2026!;Encrypt=True;TrustServerCertificate=True;";
     public string RedisConnectionString { get; init; } = "localhost:6380";
     public string RedisKeyPrefix { get; init; } = "fbserviceext";

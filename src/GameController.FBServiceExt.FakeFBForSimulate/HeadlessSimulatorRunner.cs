@@ -12,7 +12,7 @@ internal static class HeadlessSimulatorRunner
 
         Console.WriteLine("FakeFBForSimulate headless run starting...");
         Console.WriteLine($"WebhookUrl={settings.WebhookUrl}");
-        Console.WriteLine("FakeMetaMode=RedisStore");
+        Console.WriteLine($"FakeMetaMode={FakeFacebookSimulatorEngine.FakeMetaTransportMode}");
         Console.WriteLine($"Users={settings.UserCount}, DurationSeconds={settings.DurationSeconds}, CooldownSeconds={settings.CooldownSeconds}");
 
         await engine.StartAsync(settings).ConfigureAwait(false);
@@ -90,10 +90,13 @@ internal static class HeadlessSimulatorRunner
             GetInt(values, "outbound-wait-seconds", defaults.DefaultOutboundWaitSeconds),
             GetInt(values, "failure-backoff-min-seconds", defaults.DefaultFailureBackoffMinSeconds),
             GetInt(values, "failure-backoff-max-seconds", defaults.DefaultFailureBackoffMaxSeconds),
+            GetString(values, "active-show-id", defaults.ActiveShowId),
+            GetBool(values, "configure-voting-gate-on-start", defaults.ConfigureVotingGateOnStart),
             new SimulatorTextPatterns(
                 defaults.CooldownTextFragments,
                 defaults.RejectedTextFragments,
-                defaults.ExpiredTextFragments));
+                defaults.ExpiredTextFragments,
+                defaults.InactiveVotingTextFragments));
     }
 
     private static Dictionary<string, string> ParseArgs(IEnumerable<string> args)
@@ -136,4 +139,16 @@ internal static class HeadlessSimulatorRunner
 
         return fallback;
     }
+
+    private static bool GetBool(IReadOnlyDictionary<string, string> values, string key, bool fallback)
+    {
+        if (values.TryGetValue(key, out var value) && bool.TryParse(value, out var parsed))
+        {
+            return parsed;
+        }
+
+        return fallback;
+    }
 }
+
+

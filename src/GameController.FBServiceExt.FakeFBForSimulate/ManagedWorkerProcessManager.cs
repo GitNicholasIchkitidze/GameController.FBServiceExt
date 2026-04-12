@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
+using System.Text;
 
 namespace GameController.FBServiceExt.FakeFBForSimulate;
 
@@ -95,7 +96,11 @@ internal sealed class ManagedWorkerProcessManager : IAsyncDisposable
         {
             WorkingDirectory = workingDirectory,
             UseShellExecute = false,
-            CreateNoWindow = true
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8
         };
         startInfo.Environment["DOTNET_ENVIRONMENT"] = _defaults.ManagedWorkerEnvironmentName;
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = _defaults.ManagedWorkerEnvironmentName;
@@ -106,6 +111,10 @@ internal sealed class ManagedWorkerProcessManager : IAsyncDisposable
         process.EnableRaisingEvents = true;
         process.Exited += (_, _) => _log($"Managed worker slot {slot} exited. PID={process.Id}, ExitCode={TryGetExitCode(process)}");
 
+        RegisterProcessLogging(slot, process);
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+
         await Task.Delay(1500, cancellationToken).ConfigureAwait(false);
         if (process.HasExited)
         {
@@ -114,6 +123,22 @@ internal sealed class ManagedWorkerProcessManager : IAsyncDisposable
 
         _log($"Managed worker slot {slot} started. PID={process.Id}");
         return new ManagedWorkerProcess(slot, process, DateTimeOffset.UtcNow, executablePath);
+    }
+
+    private void RegisterProcessLogging(int slot, Process process)
+    {
+        process.OutputDataReceived += (_, args) => LogProcessLine(slot, "stdout", args.Data);
+        process.ErrorDataReceived += (_, args) => LogProcessLine(slot, "stderr", args.Data);
+    }
+
+    private void LogProcessLine(int slot, string streamName, string? line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return;
+        }
+
+        _log($"Managed worker slot {slot} {streamName}: {line.Trim()}");
     }
 
     private async Task StopProcessAsync(ManagedWorkerProcess process, CancellationToken cancellationToken)
@@ -231,4 +256,3 @@ internal sealed record ManagedWorkerProcessSnapshot(
     DateTimeOffset StartedAtUtc,
     string ExecutablePath,
     bool IsRunning);
-
