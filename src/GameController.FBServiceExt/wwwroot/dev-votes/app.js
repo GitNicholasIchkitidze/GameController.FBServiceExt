@@ -34,6 +34,15 @@ const metricVotesAccepted = document.getElementById('metricVotesAccepted');
 const metricRawP95 = document.getElementById('metricRawP95');
 const metricIgnored = document.getElementById('metricIgnored');
 const metricCooldown = document.getElementById('metricCooldown');
+const managedWorkerCount = document.getElementById('managedWorkerCount');
+const detectedWorkerCount = document.getElementById('detectedWorkerCount');
+const targetManagedWorkersInput = document.getElementById('targetManagedWorkersInput');
+const applyManagedWorkersButton = document.getElementById('applyManagedWorkersButton');
+const decreaseWorkersButton = document.getElementById('decreaseWorkersButton');
+const increaseWorkersButton = document.getElementById('increaseWorkersButton');
+const increaseWorkersByTwoButton = document.getElementById('increaseWorkersByTwoButton');
+const workerControlStatus = document.getElementById('workerControlStatus');
+const managedWorkersRows = document.getElementById('managedWorkersRows');
 
 let timerId = null;
 let refreshEnabled = true;
@@ -41,6 +50,7 @@ let inFlight = false;
 let updatingVotingState = false;
 let currentPage = 1;
 let currentVotingStarted = false;
+let updatingWorkerCount = false;
 
 const ka = {
     subtitle: 'ამ გვერდიდან ხედავ მიმდინარე ვოტინგის სურათს: ჩართვა/გამორთვა, ხმების ჯამი, კანდიდატების განაწილება, ტოპ ფანები, ბოლო 200 მიღებული ხმა და სასარგებლო სამუშაო მეტრიკები.',
@@ -249,6 +259,99 @@ function renderMetrics(metricsSnapshot, votesSnapshot) {
     metricCooldown.textContent = fmtInt(cooldownMsg + cooldownPb);
     workerCount.textContent = fmtInt(workers.length);
 }
+function setWorkerControlStatus(text) {
+    workerControlStatus.textContent = text;
+}
+
+function updateWorkerControlButtons() {
+    const disabled = updatingWorkerCount;
+    applyManagedWorkersButton.disabled = disabled;
+    decreaseWorkersButton.disabled = disabled;
+    increaseWorkersButton.disabled = disabled;
+    increaseWorkersByTwoButton.disabled = disabled;
+    targetManagedWorkersInput.disabled = disabled;
+}
+
+function adjustTargetManagedWorkers(delta) {
+    const current = Number(targetManagedWorkersInput.value || 0);
+    targetManagedWorkersInput.value = String(Math.max(0, current + delta));
+}
+
+function renderWorkerControl(snapshot) {
+    const managedWorkers = snapshot.managedWorkers || [];
+    managedWorkerCount.textContent = fmtInt(snapshot.desiredManagedWorkerCount || 0);
+    detectedWorkerCount.textContent = fmtInt(snapshot.detectedWorkerInstances || 0);
+
+    if (document.activeElement !== targetManagedWorkersInput && !updatingWorkerCount) {
+        targetManagedWorkersInput.value = String(snapshot.desiredManagedWorkerCount || 0);
+    }
+
+    if (!managedWorkers.length) {
+        managedWorkersRows.innerHTML = '<tr><td colspan="4" class="empty">No managed workers started from Poll Monitor.</td></tr>';
+        return;
+    }
+
+    managedWorkersRows.innerHTML = managedWorkers.map((worker) => `
+    <tr>
+      <td>${fmtInt(worker.slot)}</td>
+      <td>${fmtInt(worker.processId)}</td>
+      <td>${escapeHtml(formatDateTime(worker.startedAtUtc))}</td>
+      <td>${worker.isRunning ? 'Running' : 'Exited'}</td>
+    </tr>`).join('');
+}
+
+async function loadWorkerControlState() {
+    const response = await fetch('/dev/admin/api/workers', { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error(`Worker control API HTTP ${response.status}`);
+    const snapshot = await response.json();
+    renderWorkerControl(snapshot);
+    return snapshot;
+}
+
+async function updateManagedWorkerCount(desiredCount) {
+    updatingWorkerCount = true;
+    updateWorkerControlButtons();
+    setWorkerControlStatus(`Applying managed worker count: ${desiredCount}...`);
+
+    try {
+        const response = await fetch('/dev/admin/api/workers', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ managedWorkerCount: desiredCount })
+        });
+
+        if (!response.ok) {
+            let detail = `HTTP ${response.status}`;
+            try {
+                const problem = await response.json();
+                if (problem?.detail) {
+                    detail = problem.detail;
+                }
+            } catch {
+                // ignore parsing failure and keep the HTTP status text
+            }
+
+            throw new Error(detail);
+        }
+
+        const snapshot = await response.json();
+        renderWorkerControl(snapshot);
+        setWorkerControlStatus(`Managed worker count updated to ${snapshot.desiredManagedWorkerCount}.`);
+        return snapshot;
+    } finally {
+        updatingWorkerCount = false;
+        updateWorkerControlButtons();
+    }
+}
+
+async function performManagedWorkerUpdate(nextCount) {
+    try {
+        await updateManagedWorkerCount(nextCount);
+        await refreshSnapshot();
+    } catch (error) {
+        setWorkerControlStatus(`Worker update failed: ${error.message}`);
+    }
+}
 
 async function refreshSnapshot() {
     if (!refreshEnabled || inFlight) return;
@@ -258,10 +361,11 @@ async function refreshSnapshot() {
     liveBadge.textContent = refreshEnabled ? 'Live' : 'Stopped';
 
     try {
-        const [votesResponse, metricsResponse, votingSnapshot] = await Promise.all([
+        const [votesResponse, metricsResponse, votingSnapshot, workerControlSnapshot] = await Promise.all([
             fetch(`/dev/votes/api?${buildVotesQuery()}`, { headers: { Accept: 'application/json' } }),
             fetch('/dev/metrics/api', { headers: { Accept: 'application/json' } }),
-            loadVotingState()
+            loadVotingState(),
+            loadWorkerControlState()
         ]);
 
         if (!votesResponse.ok) throw new Error(`Votes API HTTP ${votesResponse.status}`);
@@ -281,6 +385,7 @@ async function refreshSnapshot() {
         renderCandidates(votesSnapshot.candidates || []);
         renderRecentVotes(votesSnapshot.recentVotesPage || { page: 1, totalPages: 1, totalCount: 0, items: [] });
         renderMetrics(metricsSnapshot, votesSnapshot);
+        renderWorkerControl(workerControlSnapshot);
 
         statusText.textContent = refreshEnabled ? 'Live' : 'Stopped';
         setMessage(votingSnapshot.votingStarted ? ka.onMessage : ka.offMessage);
@@ -324,6 +429,25 @@ toggleVotingButton.addEventListener('click', async () => {
     await refreshSnapshot();
 });
 
+applyManagedWorkersButton.addEventListener('click', async () => {
+    await performManagedWorkerUpdate(Number(targetManagedWorkersInput.value || 0));
+});
+
+decreaseWorkersButton.addEventListener('click', async () => {
+    adjustTargetManagedWorkers(-1);
+    await performManagedWorkerUpdate(Number(targetManagedWorkersInput.value || 0));
+});
+
+increaseWorkersButton.addEventListener('click', async () => {
+    adjustTargetManagedWorkers(1);
+    await performManagedWorkerUpdate(Number(targetManagedWorkersInput.value || 0));
+});
+
+increaseWorkersByTwoButton.addEventListener('click', async () => {
+    adjustTargetManagedWorkers(2);
+    await performManagedWorkerUpdate(Number(targetManagedWorkersInput.value || 0));
+});
+
 refreshSelect.addEventListener('change', applyTimer);
 fromInput.addEventListener('change', () => { currentPage = 1; refreshSnapshot(); });
 toInput.addEventListener('change', () => { currentPage = 1; refreshSnapshot(); });
@@ -356,5 +480,9 @@ nextPageButton.addEventListener('click', () => {
 setDefaultText();
 setDefaultRange();
 updateRefreshToggleUi();
+updateWorkerControlButtons();
 applyTimer();
 refreshSnapshot();
+
+
+

@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -363,6 +363,33 @@
                 line-height: 1.35;
             }
 
+        .worker-control {
+            padding: 0 12px 12px;
+        }
+
+        .worker-control-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 2px;
+        }
+
+        .worker-control-actions {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 88px 88px 88px;
+            gap: 8px;
+            align-items: end;
+            margin-top: 8px;
+        }
+
+        .worker-control-status {
+            margin-top: 8px;
+            min-height: 42px;
+        }
+
+        .worker-control-table {
+            margin-top: 10px;
+        }
         .table-card {
             margin-top: 12px;
         }
@@ -447,7 +474,7 @@
         }
 
         @media (max-width: 920px) {
-            .summary-grid, .meta-strip, .controls, .poll-main, .table-top, .metrics-grid {
+            .summary-grid, .meta-strip, .controls, .poll-main, .table-top, .metrics-grid, .worker-control-grid, .worker-control-actions {
                 grid-template-columns: 1fr;
             }
 
@@ -519,7 +546,32 @@
                     <div class="metric-card"><div class="label">Ignored</div><div id="metricIgnored" class="value">0</div><div class="note" id="metricIgnoredNote"></div></div>
                     <div class="metric-card"><div class="label">Cooldown Attempts</div><div id="metricCooldown" class="value">0</div><div class="note" id="metricCooldownNote"></div></div>
                 </div>
-            </div>
+                            <div class="worker-control">
+                    <div class="panel-head">Local Worker Control</div>
+                    <div class="worker-control-grid">
+                        <div class="meta-tile"><div class="label">Managed Workers</div><div id="managedWorkerCount" class="value">0</div><div class="small">Processes started from Poll Monitor.</div></div>
+                        <div class="meta-tile"><div class="label">Detected Workers</div><div id="detectedWorkerCount" class="value">0</div><div class="small">Instances currently visible in runtime metrics.</div></div>
+                    </div>
+                    <div class="worker-control-actions">
+                        <div class="field"><label for="targetManagedWorkersInput">Target Managed Workers</label><input id="targetManagedWorkersInput" type="number" min="0" step="1" value="0"></div>
+                        <button id="applyManagedWorkersButton" class="primary" type="button">Apply</button>
+                        <button id="decreaseWorkersButton" class="secondary" type="button">-1</button>
+                        <button id="increaseWorkersButton" class="secondary" type="button">+1</button>
+                    </div>
+                    <div class="worker-control-actions">
+                        <div></div>
+                        <button id="increaseWorkersByTwoButton" class="secondary" type="button">+2</button>
+                    </div>
+                    <div id="workerControlStatus" class="message-box worker-control-status">Worker control ready.</div>
+                    <div class="table-wrap worker-control-table">
+                        <table>
+                            <thead>
+                                <tr><th>Slot</th><th>PID</th><th>Started</th><th>State</th></tr>
+                            </thead>
+                            <tbody id="managedWorkersRows"><tr><td colspan="4" class="empty">No managed workers started from Poll Monitor.</td></tr></tbody>
+                        </table>
+                    </div>
+                </div></div>
         </section>
 
         <section class="card table-card">
@@ -544,3 +596,5 @@
     <script src="/dev-votes/app.js"></script>
 </body>
 </html>
+
+

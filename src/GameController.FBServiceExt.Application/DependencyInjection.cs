@@ -78,6 +78,10 @@ public static class DependencyInjection
             .Validate(options => options.ForgetMeTokens.Count > 0, "At least one forget-me token is required.")
             .ValidateOnStart();
 
+        services.AddOptions<NormalizedEventStorageOptions>()
+            .Bind(configuration.GetSection(NormalizedEventStorageOptions.SectionName))
+            .ValidateOnStart();
+
         services.AddSingleton<IRawWebhookNormalizer, RawWebhookNormalizer>();
         services.AddSingleton<INormalizedEventProcessor, NormalizedEventProcessor>();
 

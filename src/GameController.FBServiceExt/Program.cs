@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Diagnostics;
 using System.Net;
 using System.Security.Claims;
@@ -11,6 +11,7 @@ using GameController.FBServiceExt.Application.Abstractions.State;
 using GameController.FBServiceExt.Application.Abstractions.Observability;
 using GameController.FBServiceExt.Application.Contracts.Observability;
 using GameController.FBServiceExt.Application.Contracts.Runtime;
+using GameController.FBServiceExt.DevAdmin;
 using GameController.FBServiceExt.DevLogs;
 using GameController.FBServiceExt.DevMetrics;
 using GameController.FBServiceExt.Infrastructure;
@@ -73,6 +74,10 @@ try
     builder.Services.AddProblemDetails();
     builder.Services.AddControllers();
     builder.Services.AddSingleton<DevMetricsDashboardService>();
+    builder.Services.AddOptions<LocalWorkerControlOptions>()
+        .Bind(builder.Configuration.GetSection(LocalWorkerControlOptions.SectionName));
+    builder.Services.AddSingleton<ILocalWorkerProcessFactory, SystemLocalWorkerProcessFactory>();
+    builder.Services.AddSingleton<LocalWorkerManager>();
     builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
         .AddCookie(options =>
         {
@@ -461,6 +466,36 @@ try
                 source = "redis"
             });
         });
+        app.MapGet("/dev/admin/api/workers", async (LocalWorkerManager workerManager, CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var snapshot = await workerManager.GetSnapshotAsync(cancellationToken);
+                return Results.Ok(snapshot);
+            }
+            catch (Exception exception)
+            {
+                return Results.Problem(
+                    detail: exception.Message,
+                    statusCode: StatusCodes.Status500InternalServerError,
+                    title: "Worker snapshot failed.");
+            }
+        });
+        app.MapPut("/dev/admin/api/workers", async (WorkerCountUpdateRequest request, LocalWorkerManager workerManager, CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var snapshot = await workerManager.EnsureWorkerCountAsync(request.ManagedWorkerCount, cancellationToken);
+                return Results.Ok(snapshot);
+            }
+            catch (Exception exception)
+            {
+                return Results.Problem(
+                    detail: exception.Message,
+                    statusCode: StatusCodes.Status500InternalServerError,
+                    title: "Worker update failed.");
+            }
+        });
     }
 
     app.MapHealthChecks("/health/ready", new HealthCheckOptions());
@@ -550,6 +585,9 @@ internal sealed record AdminDashboardResponse(
     string Operator,
     string Source,
     RuntimeMetricsDashboardSnapshot Metrics);
+
+
+
 
 
 
