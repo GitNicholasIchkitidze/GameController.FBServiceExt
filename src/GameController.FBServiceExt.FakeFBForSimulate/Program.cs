@@ -1,5 +1,7 @@
-﻿using System.Text.Json;
+﻿using System.Reflection;
+using System.Text.Json;
 using System.Windows.Forms;
+using Microsoft.Extensions.Configuration;
 
 namespace GameController.FBServiceExt.FakeFBForSimulate;
 
@@ -27,8 +29,7 @@ internal static class Program
 
         try
         {
-            var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
-            var defaults = SimulatorDefaults.Load(settingsPath);
+            var defaults = SimulatorDefaults.Load(AppContext.BaseDirectory);
 
             if (args.Any(static arg => string.Equals(arg, "--headless", StringComparison.OrdinalIgnoreCase)))
             {
@@ -71,26 +72,32 @@ internal sealed class SimulatorDefaults
     public IReadOnlyList<string> RejectedTextFragments { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> ExpiredTextFragments { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> InactiveVotingTextFragments { get; init; } = Array.Empty<string>();
-    public string SqlConnectionString { get; init; } = "Server=127.0.0.1,14333;Database=GameControllerFBServiceExt;User ID=sa;Password=FbServiceExt_Strong_2026!;Encrypt=True;TrustServerCertificate=True;";
+    public string SqlConnectionString { get; init; } = string.Empty;
     public string RedisConnectionString { get; init; } = "localhost:6380";
     public string RedisKeyPrefix { get; init; } = "fbserviceext";
     public int DefaultManagedWorkerCount { get; init; } = 0;
     public string ManagedWorkerExecutablePath { get; init; } = string.Empty;
     public string ManagedWorkerEnvironmentName { get; init; } = "Simulator";
 
-    public static SimulatorDefaults Load(string path)
+    public static SimulatorDefaults Load(string baseDirectory)
     {
-        if (!File.Exists(path))
-        {
-            return new SimulatorDefaults();
-        }
+        var environmentName =
+            Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ??
+            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ??
+            "Production";
 
-        var root = JsonSerializer.Deserialize<SimulatorConfigurationRoot>(File.ReadAllText(path)) ?? new SimulatorConfigurationRoot();
-        return root.Simulator ?? new SimulatorDefaults();
-    }
+        var configurationBuilder = new ConfigurationBuilder()
+            .SetBasePath(baseDirectory)
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+            .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: false);
 
-    private sealed class SimulatorConfigurationRoot
-    {
-        public SimulatorDefaults? Simulator { get; set; }
+        configurationBuilder.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true);
+
+        configurationBuilder.AddEnvironmentVariables();
+
+        var configuration = configurationBuilder.Build();
+        return configuration.GetSection("Simulator").Get<SimulatorDefaults>() ?? new SimulatorDefaults();
     }
 }
+
+

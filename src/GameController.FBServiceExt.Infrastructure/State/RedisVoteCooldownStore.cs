@@ -1,4 +1,4 @@
-﻿using GameController.FBServiceExt.Application.Abstractions.State;
+using GameController.FBServiceExt.Application.Abstractions.State;
 using GameController.FBServiceExt.Application.Contracts.Runtime;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
@@ -18,6 +18,7 @@ internal sealed class RedisVoteCooldownStore : IVoteCooldownStore
         _optionsMonitor = optionsMonitor;
     }
 
+    // კონკრეტული user/show-ის cooldown snapshot-ს Redis-იდან კითხულობს.
     public async ValueTask<VoteCooldownSnapshot?> GetAsync(string showId, string userId, string recipientId, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(showId) || string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(recipientId))
@@ -36,6 +37,7 @@ internal sealed class RedisVoteCooldownStore : IVoteCooldownStore
         return new VoteCooldownSnapshot(showId, userId, recipientId, DateTime.SpecifyKind(lastVotedUtc, DateTimeKind.Utc));
     }
 
+    // მიღებული ხმის შემდეგ cooldown state-ს Redis-ში ინახავს TTL-ით.
     public async ValueTask SaveAsync(VoteCooldownSnapshot snapshot, TimeSpan retention, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(snapshot.ShowId) || string.IsNullOrWhiteSpace(snapshot.UserId) || string.IsNullOrWhiteSpace(snapshot.RecipientId) || retention <= TimeSpan.Zero)
@@ -48,6 +50,7 @@ internal sealed class RedisVoteCooldownStore : IVoteCooldownStore
         await database.StringSetAsync(key, snapshot.LastVotedUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture), retention, when: When.Always);
     }
 
+    // ვადაგასული cooldown key-ს Redis-იდან შლის.
     public async ValueTask RemoveAsync(string showId, string userId, string recipientId, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(showId) || string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(recipientId))

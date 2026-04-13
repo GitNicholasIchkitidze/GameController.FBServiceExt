@@ -1,4 +1,4 @@
-﻿using GameController.FBServiceExt.Application.Abstractions.Persistence;
+using GameController.FBServiceExt.Application.Abstractions.Persistence;
 using GameController.FBServiceExt.Application.Contracts.Votes;
 using GameController.FBServiceExt.Infrastructure.Data;
 using GameController.FBServiceExt.Infrastructure.Data.Entities;
@@ -15,6 +15,8 @@ internal sealed class SqlAcceptedVoteStore : IAcceptedVoteStore
         _dbContextFactory = dbContextFactory;
     }
 
+    // საბოლოოდ დადასტურებულ ხმას AcceptedVotes ცხრილში წერს.
+    // duplicate vote-id/source-event შემთხვევაში უბრალოდ false ბრუნდება.
     public async ValueTask<bool> TryAddAsync(AcceptedVote vote, CancellationToken cancellationToken)
     {
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);

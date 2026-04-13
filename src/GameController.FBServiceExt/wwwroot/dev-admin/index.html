@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>FBServiceExt Admin</title>
   <style>
     :root {
@@ -56,9 +59,10 @@
     .message { min-height: 42px; border-radius: 14px; padding: 12px 14px; border: 1px solid rgba(255,255,255,.08); background: rgba(15, 22, 33, .8); color: var(--muted); line-height: 1.5; }
     .message.success { color: var(--accent); border-color: rgba(88,211,170,.2); }
     .message.error { color: var(--danger); border-color: rgba(255,115,115,.2); }
+    .action-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
     a.link { color: var(--info); text-decoration: none; }
     a.link:hover { text-decoration: underline; }
-    @media (max-width: 980px) { .hero, .grid, .toolbar { grid-template-columns: 1fr; } }
+    @media (max-width: 980px) { .hero, .grid, .toolbar, .action-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -66,7 +70,7 @@
     <section class="hero">
       <div class="card">
         <h1>FBServiceExt Admin</h1>
-        <p class="sub">Local-only control page for runtime feature flags. It now manages both the Redis-backed <code>VotingStarted</code> switch and the current <code>ActiveShowId</code> that signed payloads validate against.</p>
+        <p class="sub">Local-only control page for runtime feature flags. It manages both the Redis-backed <code>VotingStarted</code> switch and the current <code>ActiveShowId</code> that signed payloads validate against.</p>
         <div class="toolbar">
           <div class="field">
             <label for="refreshSelect">Refresh</label>
@@ -109,6 +113,11 @@
             <div id="activeShowValue" class="stat-value">-</div>
             <div class="stat-note">Signed vote payloads must match this value.</div>
           </div>
+          <div class="stat">
+            <div class="stat-label">Config default</div>
+            <div id="defaultActiveShowValue" class="stat-value">-</div>
+            <div class="stat-note">Startup seeds this value only when runtime ActiveShowId is still empty.</div>
+          </div>
         </div>
       </div>
 
@@ -119,7 +128,12 @@
           <input id="activeShowInput" placeholder="show-2026-episode-1">
         </div>
         <div style="height: 12px;"></div>
-        <div class="stat-grid">
+        <div class="action-grid">
+          <button id="applyShowButton" class="secondary">Apply Active Show</button>
+          <button id="useDefaultShowButton" class="secondary">Use Config Default</button>
+        </div>
+        <div style="height: 12px;"></div>
+        <div class="action-grid">
           <button id="turnOnButton" class="primary">Turn Voting ON</button>
           <button id="turnOffButton" class="danger">Turn Voting OFF</button>
         </div>
@@ -130,6 +144,7 @@
       </div>
     </section>
   </div>
-  <script src="/dev-admin/app.js"></script>
+  <script src="/dev-admin/app.js?v=20260414a"></script>
 </body>
 </html>
+

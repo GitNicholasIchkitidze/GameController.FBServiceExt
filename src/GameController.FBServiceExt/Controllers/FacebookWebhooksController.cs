@@ -51,6 +51,7 @@ public sealed class FacebookWebhooksController : ControllerBase
     }
 
     [HttpGet]
+    // Meta-ს webhook verify handshake: ტოკენის შემოწმების შემდეგ challenge-ს აბრუნებს.
     public IActionResult Verify(
         [FromQuery(Name = "hub.mode")] string? mode,
         [FromQuery(Name = "hub.verify_token")] string? verifyToken,
@@ -75,15 +76,10 @@ public sealed class FacebookWebhooksController : ControllerBase
     }
 
     [HttpPost]
+    // FB inbound flow-ის API entrypoint:
+    // body იკითხება, signature მოწმდება, აშკარა garbage იჭრება და ვალიდური payload queue-ში იგზავნება.
     public async Task<IActionResult> Receive(CancellationToken cancellationToken)
     {
-
-
-        //          საწყისი წერტილი, აქ შემოდის პირველად ფეისბუკიდან მესიჯი
-        //
-        //
-        //
-
        var stopwatch = Stopwatch.StartNew();
         var statusCode = StatusCodes.Status500InternalServerError;
         var bodyLength = 0;

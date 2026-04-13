@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.Json;
 
 namespace GameController.FBServiceExt.FakeFBForSimulate;
@@ -7,7 +7,7 @@ internal sealed class DevMetricsSnapshotClient : IDisposable
 {
     private readonly HttpClient _httpClient = new()
     {
-        Timeout = TimeSpan.FromSeconds(5)
+        Timeout = TimeSpan.FromSeconds(15)
     };
 
     public async Task<IReadOnlyList<WorkerInstanceLoadSnapshot>> GetWorkerSnapshotsAsync(string webhookUrl, IReadOnlySet<int> managedWorkerProcessIds, CancellationToken cancellationToken = default)
@@ -121,3 +121,4 @@ internal sealed record WorkerInstanceLoadSnapshot(
     double NormalizedCycleP95Milliseconds,
     double OutboundHttpP95Milliseconds,
     bool IsManaged);
+

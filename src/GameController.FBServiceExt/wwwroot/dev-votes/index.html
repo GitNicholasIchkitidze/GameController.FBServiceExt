@@ -3,6 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>FBServiceExt Poll Monitor</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Georgian:wght@400;500;600;700;800&display=swap');
@@ -504,7 +507,6 @@
                 <div class="field"><label for="refreshSelect">Refresh every</label><select id="refreshSelect"><option value="5000">5 sec</option><option value="10000">10 sec</option><option value="30000">30 sec</option><option value="60000">60 sec</option><option value="120000" selected>120 sec</option></select></div>
                 <div class="field"><label for="fromInput">Date From</label><input id="fromInput" type="datetime-local"></div>
                 <div class="field"><label for="toInput">Date To</label><input id="toInput" type="datetime-local"></div>
-                <div class="field"><label for="showInput">Active / Filter ShowId</label><input id="showInput" placeholder="show-2026-episode-1"></div>
                 <button id="refreshToggleButton" class="secondary" type="button">Refresh: ON</button>
             </div>
 
@@ -516,6 +518,7 @@
                 <div class="meta-tile"><div class="label">Show Source</div><div id="sourceText" class="value">active-show</div></div>
                 <div class="meta-tile"><div class="label">Effective Show</div><div id="activeShowText" class="value">-</div></div>
                 <div class="meta-tile"><div class="label">Status</div><div id="statusText" class="value">Ready</div></div>
+                <div class="meta-tile"><div class="label">Config Default</div><div id="defaultShowText" class="value">-</div></div>
                 <div class="meta-tile"><div class="label">Workers</div><div id="workerCount" class="value">0</div></div>
             </div>
         </section>
@@ -593,8 +596,11 @@
             </div>
         </section>
     </div>
-    <script src="/dev-votes/app.js"></script>
+    <script src="/dev-votes/app.js?v=20260414a"></script>
 </body>
 </html>
+
+
+
 
 

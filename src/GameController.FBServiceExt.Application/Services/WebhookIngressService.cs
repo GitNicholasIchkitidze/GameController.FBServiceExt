@@ -32,6 +32,8 @@ public sealed class WebhookIngressService : IWebhookIngressService
         _logger = logger;
     }
 
+    // API layer-იდან მიღებულ raw body-ს envelope-ად აფორმატებს და ingress queue-ში აქვეყნებს.
+    // შემდეგ ამავე შეტყობინებას RawIngressNormalizerWorker ამუშავებს.
     public async ValueTask AcceptAsync(AcceptWebhookCommand command, CancellationToken cancellationToken)
     {
         var options = _optionsMonitor.CurrentValue;

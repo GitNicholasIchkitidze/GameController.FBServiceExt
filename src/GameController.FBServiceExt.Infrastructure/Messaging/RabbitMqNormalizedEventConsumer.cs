@@ -29,6 +29,7 @@ internal sealed class RabbitMqNormalizedEventConsumer : INormalizedEventConsumer
         _logger = logger;
     }
 
+    // normalized-event queue-დან ერთ event-ს lease-ით აბრუნებს processor worker-სთვის.
     public async ValueTask<IMessageLease<NormalizedMessengerEvent>?> ReceiveAsync(CancellationToken cancellationToken)
     {
         await EnsureStartedAsync(cancellationToken);
@@ -55,6 +56,7 @@ internal sealed class RabbitMqNormalizedEventConsumer : INormalizedEventConsumer
         }
     }
 
+    // normalized queue-ზე consumer-ს სტარტავს და delivery-ებს შიდა channel-ში აკუმულირებს.
     private async ValueTask EnsureStartedAsync(CancellationToken cancellationToken)
     {
         if (_started)
@@ -115,6 +117,7 @@ internal sealed class RabbitMqNormalizedEventConsumer : INormalizedEventConsumer
         }
     }
 
+    // RabbitMQ payload-ს NormalizedMessengerEvent-ად შლის და processor-ისთვის ამზადებს.
     private async Task OnReceivedAsync(object sender, BasicDeliverEventArgs eventArgs)
     {
         if (_channel is null)

@@ -17,6 +17,7 @@ internal sealed class RedisEventDeduplicationStore : IEventDeduplicationStore
         _optionsMonitor = optionsMonitor;
     }
 
+    // ამოწმებს იგივე event უკვე დამუშავებულია თუ არა, რათა duplicate processing ავიცილოთ.
     public async ValueTask<bool> IsProcessedAsync(string eventId, CancellationToken cancellationToken)
     {
         var database = await _connectionProvider.GetDatabaseAsync(cancellationToken);
@@ -24,6 +25,7 @@ internal sealed class RedisEventDeduplicationStore : IEventDeduplicationStore
         return await database.KeyExistsAsync(key);
     }
 
+    // წარმატებით დამუშავებულ event-ს dedupe key-ად ინახავს Redis-ში.
     public async ValueTask MarkProcessedAsync(string eventId, TimeSpan retention, CancellationToken cancellationToken)
     {
         var database = await _connectionProvider.GetDatabaseAsync(cancellationToken);

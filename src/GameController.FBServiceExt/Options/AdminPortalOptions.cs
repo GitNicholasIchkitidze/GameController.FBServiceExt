@@ -1,4 +1,4 @@
-﻿namespace GameController.FBServiceExt.Options;
+namespace GameController.FBServiceExt.Options;
 
 public sealed class AdminPortalOptions
 {
@@ -8,7 +8,7 @@ public sealed class AdminPortalOptions
 
     public string Username { get; set; } = "operator";
 
-    public string Password { get; set; } = "change-me-admin-password";
+    public string Password { get; set; } = string.Empty;
 
     public string CookieName { get; set; } = DefaultCookieName;
 

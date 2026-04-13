@@ -2,11 +2,12 @@ const refreshSelect = document.getElementById('refreshSelect');
 const refreshToggleButton = document.getElementById('refreshToggleButton');
 const fromInput = document.getElementById('fromInput');
 const toInput = document.getElementById('toInput');
-const showInput = document.getElementById('showInput');
+
 const toggleVotingButton = document.getElementById('toggleVotingButton');
 const votingBadge = document.getElementById('votingBadge');
 const liveBadge = document.getElementById('liveBadge');
 const statusText = document.getElementById('statusText');
+const defaultShowText = document.getElementById('defaultShowText');
 const generatedAt = document.getElementById('generatedAt');
 const lastRefresh = document.getElementById('lastRefresh');
 const sourceText = document.getElementById('sourceText');
@@ -50,6 +51,8 @@ let inFlight = false;
 let updatingVotingState = false;
 let currentPage = 1;
 let currentVotingStarted = false;
+let currentActiveShowId = '';
+let configuredDefaultActiveShowId = '';
 let updatingWorkerCount = false;
 
 const ka = {
@@ -128,7 +131,6 @@ function buildVotesQuery() {
     const params = new URLSearchParams();
     if (fromInput.value) params.set('fromUtc', new Date(fromInput.value).toISOString());
     if (toInput.value) params.set('toUtc', new Date(toInput.value).toISOString());
-    if (showInput.value.trim()) params.set('showId', showInput.value.trim());
     if (recentFilterInput.value.trim()) params.set('userFilter', recentFilterInput.value.trim());
     params.set('page', String(currentPage));
     params.set('pageSize', pageSizeSelect.value || '200');
@@ -148,6 +150,9 @@ function distribution(instances, name) {
 function renderVotingState(snapshot) {
     currentVotingStarted = !!snapshot.votingStarted;
     const activeShowId = snapshot.activeShowId || '';
+    const defaultShowId = snapshot.configuredDefaultActiveShowId || '';
+    currentActiveShowId = activeShowId;
+    configuredDefaultActiveShowId = defaultShowId;
 
     votingBadge.textContent = currentVotingStarted ? 'Voting: ON' : 'Voting: OFF';
     votingBadge.className = `badge ${currentVotingStarted ? 'on' : 'off'}`;
@@ -156,10 +161,8 @@ function renderVotingState(snapshot) {
         : ka.offHint;
 
     activeShowText.textContent = activeShowId || '-';
+    defaultShowText.textContent = defaultShowId || '-';
 
-    if (!showInput.value.trim() && activeShowId) {
-        showInput.value = activeShowId;
-    }
 
     toggleVotingButton.disabled = updatingVotingState;
     toggleVotingButton.textContent = currentVotingStarted ? 'Turn Voting OFF' : 'Turn Voting ON';
@@ -182,7 +185,7 @@ async function updateVotingState(started) {
         const response = await fetch('/dev/admin/api/voting', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ votingStarted: started, activeShowId: showInput.value.trim() || null })
+            body: JSON.stringify({ votingStarted: started, activeShowId: currentActiveShowId || null })
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         renderVotingState(await response.json());
@@ -190,6 +193,7 @@ async function updateVotingState(started) {
         updatingVotingState = false;
     }
 }
+
 
 function renderCandidates(candidates) {
     if (!candidates.length) {
@@ -451,13 +455,6 @@ increaseWorkersByTwoButton.addEventListener('click', async () => {
 refreshSelect.addEventListener('change', applyTimer);
 fromInput.addEventListener('change', () => { currentPage = 1; refreshSnapshot(); });
 toInput.addEventListener('change', () => { currentPage = 1; refreshSnapshot(); });
-showInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        currentPage = 1;
-        refreshSnapshot();
-    }
-});
 recentFilterInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
         event.preventDefault();
@@ -483,6 +480,8 @@ updateRefreshToggleUi();
 updateWorkerControlButtons();
 applyTimer();
 refreshSnapshot();
+
+
 
 
 

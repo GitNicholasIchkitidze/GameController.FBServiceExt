@@ -14,6 +14,7 @@ internal sealed class SqlAcceptedVotesMonitorService : IAcceptedVotesMonitorServ
         _dbContextFactory = dbContextFactory;
     }
 
+    // Poll Monitor/UI-სთვის AcceptedVotes-იდან აგენერირებს aggregate snapshot-ს, top fans-ს და recent votes page-ს.
     public async ValueTask<AcceptedVotesMonitorSnapshot> GetSnapshotAsync(
         DateTime? fromUtc,
         DateTime? toUtc,

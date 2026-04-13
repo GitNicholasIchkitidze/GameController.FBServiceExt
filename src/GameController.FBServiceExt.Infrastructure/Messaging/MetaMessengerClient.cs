@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -97,6 +97,8 @@ internal sealed class MetaMessengerClient : IOutboundMessengerClient
         return SendAsync(recipientId, payload, cancellationToken);
     }
 
+    // outbound transport-ის ბოლო წერტილი.
+    // აქ ტექსტი ან template რეალურად იგზავნება Meta Graph API-ზე ან simulator fake-meta endpoint-ზე.
     private async ValueTask<bool> SendAsync(string recipientId, object payload, CancellationToken cancellationToken)
     {
         _runtimeMetricsCollector.Increment("worker.outbound.messenger.attempts");

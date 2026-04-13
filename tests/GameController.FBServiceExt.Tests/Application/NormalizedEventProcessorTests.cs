@@ -51,6 +51,30 @@ public sealed class NormalizedEventProcessorTests
     }
 
     [Fact]
+    public async Task ProcessAsync_PostbackGetStarted_SendsSignedCarousel()
+    {
+        var dedupe = new InMemoryDedupeStore();
+        var cooldowns = new InMemoryVoteCooldownStore();
+        var normalizedEvents = new InMemoryNormalizedEventStore();
+        var votes = new InMemoryAcceptedVoteStore();
+        var outbound = new InMemoryOutboundMessengerClient();
+        var processor = CreateProcessor(dedupe, cooldowns, normalizedEvents, votes, outboundMessengerClient: outbound);
+
+        await processor.ProcessAsync(CreatePostbackEvent("pb-get-started", "user-1", "page-1", "GET_STARTED"), CancellationToken.None);
+
+        Assert.True(await dedupe.IsProcessedAsync("pb-get-started-postback", CancellationToken.None));
+        Assert.Single(normalizedEvents.Items);
+        Assert.Empty(votes.Items);
+
+        var carousel = Assert.Single(outbound.GenericTemplates);
+        Assert.Equal("user-1", carousel.RecipientId);
+        var candidateCard = Assert.Single(carousel.Elements);
+        var button = Assert.Single(candidateCard.Buttons);
+        Assert.StartsWith("VOTE1:", button.Payload, StringComparison.Ordinal);
+        Assert.Contains(ActiveShowId, DecodeSignedBody(button.Payload));
+    }
+
+    [Fact]
     public async Task ProcessAsync_CandidateSelection_WithConfirmationEnabled_SendsSignedConfirmationPrompt()
     {
         var dedupe = new InMemoryDedupeStore();
@@ -693,4 +717,6 @@ public sealed class NormalizedEventProcessorTests
         public RuntimeMetricsSnapshot CreateSnapshot() => new("Test", "instance", "machine", "Test", 0, DateTime.UtcNow, new(), new(), new());
     }
 }
+
+
 

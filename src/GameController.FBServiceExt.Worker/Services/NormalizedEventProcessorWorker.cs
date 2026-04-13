@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using GameController.FBServiceExt.Application.Exceptions;
 using GameController.FBServiceExt.Application.Abstractions.Messaging;
 using GameController.FBServiceExt.Application.Abstractions.Observability;
@@ -32,6 +32,8 @@ public sealed class NormalizedEventProcessorWorker : BackgroundService
         _logger = logger;
     }
 
+    // normalized processor worker-ის მთავარი გამშვები.
+    // normalized queue-დან მოვლენებს იღებს და ProcessAsync-მდე მიაქვს.
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var parallelism = Math.Max(1, _optionsMonitor.CurrentValue.NormalizedProcessingParallelism);
@@ -47,6 +49,7 @@ public sealed class NormalizedEventProcessorWorker : BackgroundService
         _logger.LogInformation("Normalized event processor worker stopped.");
     }
 
+    // ერთი processor loop: normalized event-ს იღებს, ამუშავებს და წარმატებაზე lease-ს complete-ს უკეთებს.
     private async Task RunLoopAsync(int loopId, CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)

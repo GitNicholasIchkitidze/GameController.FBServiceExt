@@ -397,15 +397,20 @@ internal sealed class FakeFacebookSimulatorEngine : IAsyncDisposable
 			}
 
 			Interlocked.Increment(ref _c.WebhookFailures);
+			var body = await resp.Content.ReadAsStringAsync(ct);
+			WriteT(
+				$"webhook-http-{(int)resp.StatusCode}",
+				$"Webhook send failed. Status={(int)resp.StatusCode}, Reason={resp.ReasonPhrase}, Url={s.WebhookUrl}, Body={TrimForLog(body)}");
 			return false;
 		}
 		catch (OperationCanceledException) when (ct.IsCancellationRequested)
 		{
 			throw;
 		}
-		catch
+		catch (Exception exception)
 		{
 			Interlocked.Increment(ref _c.WebhookFailures);
+			WriteT("webhook-exception", $"Webhook send exception for {s.WebhookUrl}: {exception.Message}");
 			return false;
 		}
 	}
@@ -506,6 +511,15 @@ internal sealed class FakeFacebookSimulatorEngine : IAsyncDisposable
 
 		if (immediate is not null)
 			WriteLog(immediate);
+	}
+
+	static string TrimForLog(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+			return "<empty>";
+
+		var compact = value.ReplaceLineEndings(" ").Trim();
+		return compact.Length <= 240 ? compact : compact[..240];
 	}
 
 	void Flush()
@@ -954,3 +968,6 @@ internal enum FakeConfirmationAction
 	Accept,
 	Decoy
 }
+
+
+

@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Text.Json;
 using GameController.FBServiceExt.Application.Abstractions.Observability;
 using GameController.FBServiceExt.Application.Abstractions.Processing;
@@ -31,6 +31,7 @@ internal sealed class MetaUserAccountNameResolver : IUserAccountNameResolver
         _logger = logger;
     }
 
+    // Facebook user display name-ს ჯერ cache-დან ეძებს, მერე საჭირო Meta API-დან resolve-ს ცდილობს.
     public async ValueTask<string?> GetOrResolveAsync(string userId, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(userId))

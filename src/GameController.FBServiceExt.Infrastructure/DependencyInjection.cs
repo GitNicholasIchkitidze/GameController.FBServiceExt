@@ -23,12 +23,37 @@ namespace GameController.FBServiceExt.Infrastructure;
 
 public static class DependencyInjection
 {
+    public enum OutboundMessengerClientMode
+    {
+        NoOp,
+        FakeMetaStore,
+        MetaMessenger
+    }
+
+    public static OutboundMessengerClientMode ResolveOutboundMessengerClientMode(MetaMessengerOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (options.UseNoOpClient)
+        {
+            return OutboundMessengerClientMode.NoOp;
+        }
+
+        if (options.UseFakeMetaStoreClient)
+        {
+            return OutboundMessengerClientMode.FakeMetaStore;
+        }
+
+        return OutboundMessengerClientMode.MetaMessenger;
+    }
+
     public static IServiceCollection AddIngressInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<RabbitMqOptions>()
             .Bind(configuration.GetSection(RabbitMqOptions.SectionName))
             .Validate(options => !string.IsNullOrWhiteSpace(options.HostName), "RabbitMQ host name is required.")
             .Validate(options => !string.IsNullOrWhiteSpace(options.RawIngressQueueName), "RabbitMQ raw ingress queue name is required.")
+            .Validate(options => ConfigurationSecretGuard.HasUsableSecret(options.Password), "RabbitMQ password is required and cannot be a placeholder.")
             .ValidateOnStart();
 
         services.AddOptions<RedisOptions>()
@@ -78,7 +103,9 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(RabbitMqOptions.SectionName))
             .Validate(options => !string.IsNullOrWhiteSpace(options.HostName), "RabbitMQ host name is required.")
             .Validate(options => !string.IsNullOrWhiteSpace(options.RawIngressQueueName), "RabbitMQ raw ingress queue name is required.")
+            .Validate(options => ConfigurationSecretGuard.HasUsableSecret(options.Password), "RabbitMQ password is required and cannot be a placeholder.")
             .Validate(options => !string.IsNullOrWhiteSpace(options.NormalizedEventQueueName), "RabbitMQ normalized event queue name is required.")
+            .Validate(options => ConfigurationSecretGuard.HasUsableSecret(options.Password), "RabbitMQ password is required and cannot be a placeholder.")
             .ValidateOnStart();
 
         services.AddOptions<RedisOptions>()
@@ -94,8 +121,8 @@ public static class DependencyInjection
         services.AddOptions<MetaMessengerOptions>()
             .Bind(configuration.GetSection(MetaMessengerOptions.SectionName))
             .Validate(
-                options => !options.Enabled || options.UseNoOpClient || options.UseFakeMetaStoreClient || !string.IsNullOrWhiteSpace(options.PageAccessToken),
-                "Meta Messenger page access token is required when outbound messaging is enabled.")
+                options => !options.Enabled || options.UseNoOpClient || options.UseFakeMetaStoreClient || ConfigurationSecretGuard.HasUsableSecret(options.PageAccessToken),
+                "Meta Messenger page access token is required and cannot be a placeholder when outbound messaging is enabled.")
             .Validate(options => options.UserAccountNameCacheTtl > TimeSpan.Zero, "User account name cache TTL must be greater than zero.")
             .ValidateOnStart();
 
@@ -118,17 +145,17 @@ public static class DependencyInjection
         services.AddHttpClient<IUserAccountNameResolver, MetaUserAccountNameResolver>(client => client.Timeout = TimeSpan.FromSeconds(5));
 
         var metaMessengerOptions = configuration.GetSection(MetaMessengerOptions.SectionName).Get<MetaMessengerOptions>() ?? new MetaMessengerOptions();
-        if (metaMessengerOptions.UseNoOpClient)
+        switch (ResolveOutboundMessengerClientMode(metaMessengerOptions))
         {
-            services.AddSingleton<IOutboundMessengerClient, NoOpOutboundMessengerClient>();
-        }
-        else if (metaMessengerOptions.UseFakeMetaStoreClient)
-        {
-            services.AddSingleton<IOutboundMessengerClient, RedisFakeMetaMessengerClient>();
-        }
-        else
-        {
-            services.AddHttpClient<IOutboundMessengerClient, MetaMessengerClient>(client => client.Timeout = TimeSpan.FromSeconds(10));
+            case OutboundMessengerClientMode.NoOp:
+                services.AddSingleton<IOutboundMessengerClient, NoOpOutboundMessengerClient>();
+                break;
+            case OutboundMessengerClientMode.FakeMetaStore:
+                services.AddSingleton<IOutboundMessengerClient, RedisFakeMetaMessengerClient>();
+                break;
+            default:
+                services.AddHttpClient<IOutboundMessengerClient, MetaMessengerClient>(client => client.Timeout = TimeSpan.FromSeconds(10));
+                break;
         }
 
         services.AddSingleton<IRawIngressConsumer, RabbitMqRawIngressConsumer>();
@@ -181,3 +208,9 @@ public static class DependencyInjection
         }
     }
 }
+
+
+
+
+
+

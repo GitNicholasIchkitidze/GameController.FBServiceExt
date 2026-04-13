@@ -16,6 +16,7 @@ internal sealed class RedisUserProcessingLockManager : IUserProcessingLockManage
         _optionsMonitor = optionsMonitor;
     }
 
+    // ერთსა და იმავე user scope-ზე პარალელურ დამუშავებას ბლოკავს Redis lock-ით.
     public async ValueTask<IDistributedLockHandle?> TryAcquireAsync(string scope, TimeSpan ttl, CancellationToken cancellationToken)
     {
         var database = await _connectionProvider.GetDatabaseAsync(cancellationToken);

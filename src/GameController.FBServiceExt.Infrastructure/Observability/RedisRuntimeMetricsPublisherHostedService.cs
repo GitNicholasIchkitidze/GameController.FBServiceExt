@@ -30,6 +30,7 @@ internal sealed class RedisRuntimeMetricsPublisherHostedService : BackgroundServ
         _logger = logger;
     }
 
+    // ყოველი instance-ის runtime metrics snapshot-ს პერიოდულად Redis-ში აქვეყნებს.
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -52,6 +53,7 @@ internal sealed class RedisRuntimeMetricsPublisherHostedService : BackgroundServ
         }
     }
 
+    // collector-დან მიმდინარე metrics snapshot-ს იღებს და Redis index-ში დებს TTL-ით.
     private async Task PublishSnapshotAsync(CancellationToken cancellationToken)
     {
         var snapshot = _runtimeMetricsCollector.CreateSnapshot();

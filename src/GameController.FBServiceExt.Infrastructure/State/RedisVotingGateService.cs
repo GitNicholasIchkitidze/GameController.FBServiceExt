@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using GameController.FBServiceExt.Application.Abstractions.State;
 using GameController.FBServiceExt.Application.Contracts.Runtime;
 using Microsoft.Extensions.Logging;
@@ -36,6 +36,8 @@ internal sealed class RedisVotingGateService : IVotingGateService, IDisposable
         _logger = logger;
     }
 
+    // VotingStarted და ActiveShowId-ს Redis-იდან კითხულობს.
+    // აქვს მოკლე cache და pub/sub, რათა ყველა instance ერთ runtime state-ზე შეთანხმდეს.
     public async ValueTask<VotingRuntimeState> GetStateAsync(CancellationToken cancellationToken)
     {
         await EnsureSubscriptionAsync(cancellationToken);
@@ -79,6 +81,7 @@ internal sealed class RedisVotingGateService : IVotingGateService, IDisposable
         }
     }
 
+    // voting runtime state-ს Redis-ში წერს და ცვლილებას pub/sub-ით სხვა instance-ებს ატყობინებს.
     public async ValueTask SetStateAsync(VotingRuntimeState state, CancellationToken cancellationToken)
     {
         await EnsureSubscriptionAsync(cancellationToken);
@@ -148,6 +151,7 @@ internal sealed class RedisVotingGateService : IVotingGateService, IDisposable
         }
     }
 
+    // voting state change channel-ზე subscription-ს აყენებს, რომ local cache სწრაფად განახლდეს.
     private async ValueTask EnsureSubscriptionAsync(CancellationToken cancellationToken)
     {
         if (_subscriptionStarted)

@@ -43,6 +43,8 @@ public sealed class RawIngressNormalizerWorker : BackgroundService
         _logger = logger;
     }
 
+    // raw ingress worker-ის მთავარი გამშვები.
+    // queue-დან raw envelope-ებს იღებს, normalize-ს აკეთებს და შედეგს normalized queue-ში აგზავნის.
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var parallelism = Math.Max(1, _optionsMonitor.CurrentValue.RawIngressParallelism);
@@ -58,6 +60,7 @@ public sealed class RawIngressNormalizerWorker : BackgroundService
         _logger.LogInformation("Raw ingress normalizer worker stopped.");
     }
 
+    // ერთი worker loop: raw queue -> NormalizeAsync -> business filter -> normalized queue.
     private async Task RunLoopAsync(int loopId, CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -126,6 +129,7 @@ public sealed class RawIngressNormalizerWorker : BackgroundService
         }
     }
 
+    // მხოლოდ ვოტინგისთვის და forget-me flow-სთვის საჭირო event-ებს ტოვებს.
     private IReadOnlyList<NormalizedMessengerEvent> FilterBusinessEvents(IReadOnlyList<NormalizedMessengerEvent> events)
     {
         if (events.Count == 0)

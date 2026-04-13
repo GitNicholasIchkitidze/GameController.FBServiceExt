@@ -1,7 +1,9 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
 using GameController.FBServiceExt.Application;
+using GameController.FBServiceExt.Application.Options;
 using GameController.FBServiceExt.Infrastructure;
+using InfrastructureDependencyInjection = GameController.FBServiceExt.Infrastructure.DependencyInjection;
 using GameController.FBServiceExt.Infrastructure.Logging;
 using GameController.FBServiceExt.Worker.Options;
 using GameController.FBServiceExt.Worker.Services;
@@ -18,17 +20,13 @@ try
     var builder = Host.CreateApplicationBuilder(args);
 
     var environmentName = builder.Environment.EnvironmentName;
-    var shouldLoadUserSecrets = builder.Environment.IsDevelopment();
     builder.Configuration.Sources.Clear();
     var sharedConfigPaths = AddSharedJsonFiles(builder.Configuration, builder.Environment.ContentRootPath, environmentName);
     builder.Configuration
         .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
         .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true);
 
-    if (shouldLoadUserSecrets)
-    {
-        builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true);
-    }
+    builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true);
 
     builder.Configuration.AddEnvironmentVariables();
 
@@ -38,13 +36,21 @@ try
     }
 
     Log.Information(
-        "Worker configuration initialized. Environment={EnvironmentName}, ContentRoot={ContentRootPath}, SharedConfigs={SharedConfigs}, UserSecretsLoaded={UserSecretsLoaded}, VotingSecretConfigured={VotingSecretConfigured}, DataErasureSecretConfigured={DataErasureSecretConfigured}",
+        "Worker configuration initialized. Environment={EnvironmentName}, ContentRoot={ContentRootPath}, SharedConfigs={SharedConfigs}, VotingSecretConfigured={VotingSecretConfigured}, DataErasureSecretConfigured={DataErasureSecretConfigured}",
         environmentName,
         builder.Environment.ContentRootPath,
         sharedConfigPaths,
-        shouldLoadUserSecrets,
         HasConfiguredSecret(builder.Configuration, "VotingWorkflow:PayloadSignatureSecret"),
         HasConfiguredSecret(builder.Configuration, "DataErasure:ConfirmationPayloadSecret"));
+    var metaMessengerOptions = builder.Configuration.GetSection(MetaMessengerOptions.SectionName).Get<MetaMessengerOptions>() ?? new MetaMessengerOptions();
+    var outboundMode = InfrastructureDependencyInjection.ResolveOutboundMessengerClientMode(metaMessengerOptions);
+    Log.Information(
+        "Worker outbound messenger configured. Mode={OutboundMode}, Enabled={Enabled}, TokenConfigured={TokenConfigured}, GraphApiBaseUrl={GraphApiBaseUrl}, SimulatorGraphApiBaseUrl={SimulatorGraphApiBaseUrl}",
+        outboundMode,
+        metaMessengerOptions.Enabled,
+        HasConfiguredSecret(builder.Configuration, "MetaMessenger:PageAccessToken"),
+        ResolveEffectiveGraphApiBaseUrl(metaMessengerOptions.GraphApiBaseUrl),
+        ResolveEffectiveSimulatorGraphApiBaseUrl(metaMessengerOptions.SimulatorGraphApiBaseUrl));
 
     builder.Logging.Configure(options =>
     {
@@ -152,3 +158,14 @@ static IEnumerable<DirectoryInfo> EnumerateCandidateRoots(string contentRootPath
 
 static bool HasConfiguredSecret(IConfiguration configuration, string key)
     => !string.IsNullOrWhiteSpace(configuration[key]);
+static string ResolveEffectiveGraphApiBaseUrl(string? baseUrl)
+    => string.IsNullOrWhiteSpace(baseUrl)
+        ? "https://graph.facebook.com"
+        : baseUrl.Trim().TrimEnd('/');
+static string ResolveEffectiveSimulatorGraphApiBaseUrl(string? baseUrl)
+    => string.IsNullOrWhiteSpace(baseUrl)
+        ? MetaMessengerOptions.DefaultSimulatorGraphApiBaseUrl
+        : baseUrl.Trim().TrimEnd('/');
+
+
+

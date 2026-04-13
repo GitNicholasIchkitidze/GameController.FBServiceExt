@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -189,62 +189,62 @@
     <section class="hero">
       <div class="card">
         <h1>FBServiceExt Metrics</h1>
-        <p class="sub" title="?? ???? ???????? realtime ????, ??????? webhook ACK ??????????, worker throughput-? ?? RabbitMQ queue pressure-? ?????????. ????????? K6 ???????? ????, ???? ????? bottleneck ??????? ???????.">Local realtime dashboard for webhook ACK, worker throughput, and RabbitMQ queue pressure. Use this during K6 runs to see where the system is actually saturating.</p>
+        <p class="sub" title="Local realtime view for webhook ACK, worker throughput, and RabbitMQ queue pressure during load runs.">Local realtime dashboard for webhook ACK, worker throughput, and RabbitMQ queue pressure. Use this during K6 runs to see where the system is actually saturating.</p>
         <div class="toolbar">
           <div class="field">
-            <label for="refreshSelect" title="?????? ????? ?????? ????????? dashboard-?? snapshot.">Refresh</label>
-            <select id="refreshSelect" title="?????? ????? ?????? ????????? dashboard-?? snapshot.">
+            <label for="refreshSelect" title="How often the dashboard refreshes its snapshot.">Refresh</label>
+            <select id="refreshSelect" title="How often the dashboard refreshes its snapshot.">
               <option value="1000">1 sec</option>
               <option value="2000" selected>2 sec</option>
               <option value="5000">5 sec</option>
               <option value="10000">10 sec</option>
             </select>
           </div>
-          <button id="refreshButton" title="?????? ???????? metrics snapshot.">Refresh</button>
-          <button id="pauseButton" class="secondary" title="??????? ?? ????????? ?????????? refresh.">Pause</button>
+          <button id="refreshButton" title="Refresh metrics snapshot now.">Refresh</button>
+          <button id="pauseButton" class="secondary" title="Pause or resume automatic refresh.">Pause</button>
         </div>
       </div>
       <div class="card meta">
-        <div class="meta-row"><span class="meta-label" title="????? ????????? ???????????: backend metrics endpoint ??????? ?? ???.">Status</span><span class="badge"><span class="dot"></span><span id="statusText">Ready</span></span></div>
-        <div class="meta-row"><span class="meta-label" title="?? snapshot ????? ???????.">Generated</span><span id="generatedAt">-</span></div>
-        <div class="meta-row"><span class="meta-label" title="UI ????? ????? ????????.">Last refresh</span><span id="lastRefresh">-</span></div>
-        <div class="meta-row"><span class="meta-label" title="??????? API instance ???????? runtime metrics snapshot-?.">API instances</span><span id="apiInstanceCount">0</span></div>
-        <div class="meta-row"><span class="meta-label" title="??????? Worker instance ???????? runtime metrics snapshot-?.">Worker instances</span><span id="workerInstanceCount">0</span></div>
+        <div class="meta-row"><span class="meta-label" title="Current backend metrics endpoint status.">Status</span><span class="badge"><span class="dot"></span><span id="statusText">Ready</span></span></div>
+        <div class="meta-row"><span class="meta-label" title="When this snapshot was generated.">Generated</span><span id="generatedAt">-</span></div>
+        <div class="meta-row"><span class="meta-label" title="When the UI last refreshed.">Last refresh</span><span id="lastRefresh">-</span></div>
+        <div class="meta-row"><span class="meta-label" title="API instance count in the runtime metrics snapshot.">API instances</span><span id="apiInstanceCount">0</span></div>
+        <div class="meta-row"><span class="meta-label" title="Worker instance count in the runtime metrics snapshot.">Worker instances</span><span id="workerInstanceCount">0</span></div>
       </div>
     </section>
 
     <section class="summary-grid">
       <div class="card">
-        <h2 title="API ingress-?? ????????????: ??????? request ?????? ?? ???????? ??????? ???????? 200 OK.">API ACK</h2>
+        <h2 title="API ingress behavior: request volume and how quickly the API acknowledges with 200 OK.">API ACK</h2>
         <div class="stat-grid" id="apiSummary"></div>
       </div>
       <div class="card">
-        <h2 title="Raw worker-?? ????????????: ??????? raw webhook envelope ???? queue-??? ?? ?????? event-?? ??????.">Worker Raw</h2>
+        <h2 title="Raw worker behavior: raw webhook envelopes pulled from the queue and normalized into events.">Worker Raw</h2>
         <div class="stat-grid" id="rawSummary"></div>
       </div>
       <div class="card">
-        <h2 title="Business processor-?? ????????????: ??????? normalized event ????????? ?? ??????? state transition ????????.">Worker Processor</h2>
+        <h2 title="Business processor behavior: normalized events handled and state transitions applied.">Worker Processor</h2>
         <div class="stat-grid" id="processorSummary"></div>
       </div>
     </section>
 
     <section class="queue-grid">
       <div class="card">
-        <h2 title="RabbitMQ queue pressure-?? ?????? ??????: backlog, in-flight messages ?? drain-?? ?????.">Queue Health</h2>
+        <h2 title="RabbitMQ queue pressure summary: backlog, in-flight messages, and drain speed.">Queue Health</h2>
         <div class="stat-grid" id="queueSummary"></div>
       </div>
       <div class="card">
-        <h2 title="RabbitMQ queue-???? ????????? snapshot. ?? queue-by-queue ???? ??? ???????? ?????.">Queues</h2>
+        <h2 title="Per-queue RabbitMQ snapshot with the current health of each queue.">Queues</h2>
         <table>
           <thead>
             <tr>
-              <th title="RabbitMQ queue-?? ??????.">Queue</th>
-              <th title="Queue-?? ????????? ???????????: Stable, Transient, Draining ?? Critical.">Status</th>
-              <th title="??????? consumer ?????? ?? queue-?.">Consumers</th>
-              <th title="??????? message ???? queue-?? ?? ??? consumer-? ?? ?????.">Ready</th>
-              <th title="??????? message ???? consumer-? ???? ???????, ?????? ack ??? ?? ???????????.">Unacked</th>
-              <th title="??????? message ?????????? ????? ?? queue-??.">Publish/s</th>
-              <th title="??????? message ack-???? ????? ?? queue-???.">Ack/s</th>
+              <th title="RabbitMQ queue name.">Queue</th>
+              <th title="Queue health status: Stable, Transient, Draining, or Critical.">Status</th>
+              <th title="Number of consumers attached to the queue.">Consumers</th>
+              <th title="Messages ready in the queue and not yet assigned to a consumer.">Ready</th>
+              <th title="Messages currently delivered to consumers and waiting for ack.">Unacked</th>
+              <th title="Publish rate for messages entering the queue.">Publish/s</th>
+              <th title="Ack rate for messages leaving the queue.">Ack/s</th>
             </tr>
           </thead>
           <tbody id="queueRows"></tbody>
@@ -254,11 +254,11 @@
 
     <section class="instances-grid">
       <div class="card">
-        <h2 title="?????????? API instance-???? runtime snapshot.">API Instances</h2>
+        <h2 title="Runtime snapshot grouped by API instance.">API Instances</h2>
         <div id="apiInstances"></div>
       </div>
       <div class="card">
-        <h2 title="?????????? Worker instance-???? runtime snapshot.">Worker Instances</h2>
+        <h2 title="Runtime snapshot grouped by Worker instance.">Worker Instances</h2>
         <div id="workerInstances"></div>
       </div>
     </section>
@@ -266,3 +266,4 @@
   <script src="/dev-metrics/app.js"></script>
 </body>
 </html>
+

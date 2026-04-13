@@ -36,6 +36,8 @@ internal sealed class RabbitMqRawIngressPublisher : IRawIngressPublisher, IAsync
         _logger = logger;
     }
 
+    // API-დან მიღებულ raw webhook body-ს RabbitMQ raw-ingress queue-ში წერს.
+    // შემდეგ ამავე შეტყობინებას RawIngressConsumer და RawIngressNormalizerWorker წაიკითხავენ.
     public async ValueTask PublishAsync(RawIngressPublishRequest publishRequest, CancellationToken cancellationToken)
     {
         var options = _optionsMonitor.CurrentValue;
@@ -161,6 +163,7 @@ internal sealed class RabbitMqRawIngressPublisher : IRawIngressPublisher, IAsync
         }
     }
 
+    // publisher-ის channel pool-ს ინიციალიზებს, რომ publish path-ზე ზედმეტი connect/create ხარჯი შემცირდეს.
     private async ValueTask EnsurePoolAsync(RabbitMqOptions options, CancellationToken cancellationToken)
     {
         if (_initialized)

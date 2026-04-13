@@ -30,6 +30,8 @@ internal sealed class RabbitMqRawIngressConsumer : IRawIngressConsumer, IAsyncDi
         _logger = logger;
     }
 
+    // raw-ingress queue-დან ერთ envelope-ს იღებს lease-ით.
+    // lease მოგვიანებით worker-ში complete/abandon გზით იმართება.
     public async ValueTask<IMessageLease<RawWebhookEnvelope>?> ReceiveAsync(CancellationToken cancellationToken)
     {
         await EnsureStartedAsync(cancellationToken);
@@ -56,6 +58,7 @@ internal sealed class RabbitMqRawIngressConsumer : IRawIngressConsumer, IAsyncDi
         }
     }
 
+    // RabbitMQ consumer-ს ერთხელ აყენებს queue-ზე და მიღებულ delivery-ებს local channel-ში აწვდის.
     private async ValueTask EnsureStartedAsync(CancellationToken cancellationToken)
     {
         if (_started)
@@ -116,6 +119,7 @@ internal sealed class RabbitMqRawIngressConsumer : IRawIngressConsumer, IAsyncDi
         }
     }
 
+    // RabbitMQ delivery-ს RawWebhookEnvelope-ად შლის და შიდა deliveries queue-ში დებს.
     private async Task OnReceivedAsync(object sender, BasicDeliverEventArgs eventArgs)
     {
         if (_channel is null)

@@ -1,14 +1,7 @@
-﻿using System.Reflection;
-using System.Diagnostics;
-using System.Net;
-using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
-using GameController.FBServiceExt;
+﻿using GameController.FBServiceExt;
 using GameController.FBServiceExt.Application;
-using GameController.FBServiceExt.Application.Abstractions.State;
 using GameController.FBServiceExt.Application.Abstractions.Observability;
+using GameController.FBServiceExt.Application.Abstractions.State;
 using GameController.FBServiceExt.Application.Contracts.Observability;
 using GameController.FBServiceExt.Application.Contracts.Runtime;
 using GameController.FBServiceExt.DevAdmin;
@@ -21,11 +14,20 @@ using GameController.FBServiceExt.Options;
 using GameController.FBServiceExt.Startup;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Events;
+using System.Diagnostics;
+using System.Net;
+using System.Reflection;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -35,14 +37,23 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    var environmentName = builder.Environment.EnvironmentName;
+
+	var environmentName = builder.Environment.EnvironmentName;
     builder.Configuration.Sources.Clear();
-    AddSharedJsonFiles(builder.Configuration, builder.Environment.ContentRootPath, environmentName);
-    builder.Configuration
+
+
+	AddSharedJsonFiles(builder.Configuration, builder.Environment.ContentRootPath, environmentName);
+
+
+
+	builder.Configuration
         .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-        .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true)
-        .AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true)
-        .AddEnvironmentVariables();
+        .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true);
+
+
+    builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true);
+
+    builder.Configuration.AddEnvironmentVariables();
 
     if (args is { Length: > 0 })
     {
@@ -73,9 +84,17 @@ try
 
     builder.Services.AddProblemDetails();
     builder.Services.AddControllers();
+    if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Simulator"))
+    {
+        var dataProtectionPath = Path.Combine(builder.Environment.ContentRootPath, ".local", "data-protection-keys");
+        Directory.CreateDirectory(dataProtectionPath);
+        builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath));
+    }
     builder.Services.AddSingleton<DevMetricsDashboardService>();
     builder.Services.AddOptions<LocalWorkerControlOptions>()
         .Bind(builder.Configuration.GetSection(LocalWorkerControlOptions.SectionName));
+    builder.Services.AddOptions<VotingRuntimeDefaultsOptions>()
+        .Bind(builder.Configuration.GetSection(VotingRuntimeDefaultsOptions.SectionName));
     builder.Services.AddSingleton<ILocalWorkerProcessFactory, SystemLocalWorkerProcessFactory>();
     builder.Services.AddSingleton<LocalWorkerManager>();
     builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -123,12 +142,19 @@ try
         .Bind(builder.Configuration.GetSection(AdminPortalOptions.SectionName))
         .Validate(static options =>
                 !string.IsNullOrWhiteSpace(options.Username) &&
-                !string.IsNullOrWhiteSpace(options.Password),
-            "AdminPortal username and password are required.")
+                GameController.FBServiceExt.Application.Options.ConfigurationSecretGuard.HasUsableSecret(options.Password),
+            "AdminPortal username is required and password cannot be empty or placeholder.")
         .ValidateOnStart();
     builder.Services.AddOptions<DevLogViewerOptions>()
-        .Bind(builder.Configuration.GetSection(DevLogViewerOptions.SectionName));
+        .Bind(builder.Configuration.GetSection(DevLogViewerOptions.SectionName))
+        .Validate(static options =>
+                !options.Enabled ||
+                (!string.IsNullOrWhiteSpace(options.Username) &&
+                 GameController.FBServiceExt.Application.Options.ConfigurationSecretGuard.HasUsableSecret(options.Password)),
+            "DevLogViewer credentials are required and cannot be placeholders when the viewer is enabled.")
+        .ValidateOnStart();
     builder.Services.AddHttpClient<GraylogLogViewerService>(client => client.Timeout = TimeSpan.FromSeconds(5));
+    builder.Services.AddHostedService<VotingRuntimeDefaultsHostedService>();
     builder.Services.AddHttpClient<GraylogLogCleanupService>(client => client.Timeout = TimeSpan.FromSeconds(30));
     builder.Services.AddHostedService<LocalDevBrowserTabsHostedService>();
     builder.Services.AddIngressApplication(builder.Configuration);
@@ -291,6 +317,7 @@ try
     var adminApi = app.MapGroup("/admin/api").RequireAuthorization();
     adminApi.MapGet("/dashboard", async (
         IVotingGateService votingGateService,
+        IOptionsMonitor<VotingRuntimeDefaultsOptions> defaultsOptionsMonitor,
         DevMetricsDashboardService dashboardService,
         HttpContext context,
         CancellationToken cancellationToken) =>
@@ -301,6 +328,7 @@ try
         return Results.Ok(new AdminDashboardResponse(
             VotingStarted: state.VotingStarted,
             ActiveShowId: state.ActiveShowId,
+            ConfiguredDefaultActiveShowId: NormalizeActiveShowId(defaultsOptionsMonitor.CurrentValue.DefaultActiveShowId),
             Utc: DateTime.UtcNow,
             Operator: context.User.FindFirstValue(ClaimTypes.Name) ?? string.Empty,
             Source: "redis",
@@ -310,16 +338,41 @@ try
         VotingGateUpdateRequest request,
         IVotingGateService votingGateService,
         DevMetricsDashboardService dashboardService,
+        IOptionsMonitor<VotingRuntimeDefaultsOptions> defaultsOptionsMonitor,
         HttpContext context,
         CancellationToken cancellationToken) =>
     {
-        var updatedState = new VotingRuntimeState(request.VotingStarted, string.IsNullOrWhiteSpace(request.ActiveShowId) ? null : request.ActiveShowId.Trim());
+        var updatedState = new VotingRuntimeState(request.VotingStarted, NormalizeActiveShowId(request.ActiveShowId));
         await votingGateService.SetStateAsync(updatedState, cancellationToken);
         var snapshot = await dashboardService.GetSnapshotAsync(cancellationToken);
 
         return Results.Ok(new AdminDashboardResponse(
             VotingStarted: updatedState.VotingStarted,
             ActiveShowId: updatedState.ActiveShowId,
+            ConfiguredDefaultActiveShowId: NormalizeActiveShowId(defaultsOptionsMonitor.CurrentValue.DefaultActiveShowId),
+            Utc: DateTime.UtcNow,
+            Operator: context.User.FindFirstValue(ClaimTypes.Name) ?? string.Empty,
+            Source: "redis",
+            Metrics: snapshot));
+    });
+
+    adminApi.MapPut("/voting/active-show", async (
+        ActiveShowIdUpdateRequest request,
+        IVotingGateService votingGateService,
+        DevMetricsDashboardService dashboardService,
+        IOptionsMonitor<VotingRuntimeDefaultsOptions> defaultsOptionsMonitor,
+        HttpContext context,
+        CancellationToken cancellationToken) =>
+    {
+        var currentState = await votingGateService.GetStateAsync(cancellationToken);
+        var updatedState = currentState with { ActiveShowId = NormalizeActiveShowId(request.ActiveShowId) };
+        await votingGateService.SetStateAsync(updatedState, cancellationToken);
+        var snapshot = await dashboardService.GetSnapshotAsync(cancellationToken);
+
+        return Results.Ok(new AdminDashboardResponse(
+            VotingStarted: updatedState.VotingStarted,
+            ActiveShowId: updatedState.ActiveShowId,
+            ConfiguredDefaultActiveShowId: NormalizeActiveShowId(defaultsOptionsMonitor.CurrentValue.DefaultActiveShowId),
             Utc: DateTime.UtcNow,
             Operator: context.User.FindFirstValue(ClaimTypes.Name) ?? string.Empty,
             Source: "redis",
@@ -443,25 +496,41 @@ try
         });
 
         app.MapGet("/dev/admin", () => Results.Redirect("/dev-admin/index.html"));
-        app.MapGet("/dev/admin/api/voting", async (IVotingGateService votingGateService, CancellationToken cancellationToken) =>
+        app.MapGet("/dev/admin/api/voting", async (IVotingGateService votingGateService, IOptionsMonitor<VotingRuntimeDefaultsOptions> defaultsOptionsMonitor, CancellationToken cancellationToken) =>
         {
             var state = await votingGateService.GetStateAsync(cancellationToken);
             return Results.Ok(new
             {
                 votingStarted = state.VotingStarted,
                 activeShowId = state.ActiveShowId,
+                configuredDefaultActiveShowId = NormalizeActiveShowId(defaultsOptionsMonitor.CurrentValue.DefaultActiveShowId),
                 utc = DateTime.UtcNow,
                 source = "redis"
             });
         });
-        app.MapPut("/dev/admin/api/voting", async (VotingGateUpdateRequest request, IVotingGateService votingGateService, CancellationToken cancellationToken) =>
+        app.MapPut("/dev/admin/api/voting", async (VotingGateUpdateRequest request, IVotingGateService votingGateService, IOptionsMonitor<VotingRuntimeDefaultsOptions> defaultsOptionsMonitor, CancellationToken cancellationToken) =>
         {
-            var updatedState = new VotingRuntimeState(request.VotingStarted, string.IsNullOrWhiteSpace(request.ActiveShowId) ? null : request.ActiveShowId.Trim());
+            var updatedState = new VotingRuntimeState(request.VotingStarted, NormalizeActiveShowId(request.ActiveShowId));
             await votingGateService.SetStateAsync(updatedState, cancellationToken);
             return Results.Ok(new
             {
                 votingStarted = updatedState.VotingStarted,
                 activeShowId = updatedState.ActiveShowId,
+                configuredDefaultActiveShowId = NormalizeActiveShowId(defaultsOptionsMonitor.CurrentValue.DefaultActiveShowId),
+                utc = DateTime.UtcNow,
+                source = "redis"
+            });
+        });
+        app.MapPut("/dev/admin/api/voting/active-show", async (ActiveShowIdUpdateRequest request, IVotingGateService votingGateService, IOptionsMonitor<VotingRuntimeDefaultsOptions> defaultsOptionsMonitor, CancellationToken cancellationToken) =>
+        {
+            var currentState = await votingGateService.GetStateAsync(cancellationToken);
+            var updatedState = currentState with { ActiveShowId = NormalizeActiveShowId(request.ActiveShowId) };
+            await votingGateService.SetStateAsync(updatedState, cancellationToken);
+            return Results.Ok(new
+            {
+                votingStarted = updatedState.VotingStarted,
+                activeShowId = updatedState.ActiveShowId,
+                configuredDefaultActiveShowId = NormalizeActiveShowId(defaultsOptionsMonitor.CurrentValue.DefaultActiveShowId),
                 utc = DateTime.UtcNow,
                 source = "redis"
             });
@@ -536,6 +605,11 @@ static bool IsLocalRequest(HttpContext httpContext)
     return localIpAddress is not null && remoteIpAddress.Equals(localIpAddress);
 }
 
+static string? NormalizeActiveShowId(string? activeShowId)
+{
+    return string.IsNullOrWhiteSpace(activeShowId) ? null : activeShowId.Trim();
+}
+
 static bool FixedTimeEquals(string? left, string? right)
 {
     var leftBytes = Encoding.UTF8.GetBytes(left ?? string.Empty);
@@ -578,13 +652,20 @@ static IEnumerable<string> ResolveSharedConfigPaths(string contentRootPath, stri
 
 internal sealed record AdminLoginRequest(string Username, string Password);
 internal sealed record VotingGateUpdateRequest(bool VotingStarted, string? ActiveShowId);
+internal sealed record ActiveShowIdUpdateRequest(string? ActiveShowId);
 internal sealed record AdminDashboardResponse(
     bool VotingStarted,
     string? ActiveShowId,
+    string? ConfiguredDefaultActiveShowId,
     DateTime Utc,
     string Operator,
     string Source,
     RuntimeMetricsDashboardSnapshot Metrics);
+
+
+
+
+
 
 
 

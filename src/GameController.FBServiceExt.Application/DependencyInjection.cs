@@ -27,8 +27,8 @@ public static class DependencyInjection
 
         services.AddOptions<MetaWebhookOptions>()
             .Bind(configuration.GetSection(MetaWebhookOptions.SectionName))
-            .Validate(options => !string.IsNullOrWhiteSpace(options.VerifyToken), "Meta webhook verify token is required.")
-            .Validate(options => !options.RequireSignatureValidation || !string.IsNullOrWhiteSpace(options.AppSecret), "Meta webhook app secret is required when signature validation is enabled.")
+            .Validate(options => ConfigurationSecretGuard.HasUsableSecret(options.VerifyToken), "Meta webhook verify token is required and cannot be a placeholder.")
+            .Validate(options => !options.RequireSignatureValidation || ConfigurationSecretGuard.HasUsableSecret(options.AppSecret), "Meta webhook app secret is required and cannot be a placeholder when signature validation is enabled.")
             .ValidateOnStart();
 
         services.AddOptions<MessengerContentOptions>()
@@ -39,7 +39,7 @@ public static class DependencyInjection
         services.AddOptions<VotingWorkflowOptions>()
             .Bind(configuration.GetSection(VotingWorkflowOptions.SectionName))
             .Validate(options => options.VoteStartTokens.Count > 0, "At least one vote-start token is required.")
-            .Validate(options => !string.IsNullOrWhiteSpace(options.PayloadSignatureSecret), "Voting payload signature secret is required.")
+            .Validate(options => ConfigurationSecretGuard.HasUsableSecret(options.PayloadSignatureSecret), "Voting payload signature secret is required and cannot be a placeholder.")
             .ValidateOnStart();
 
         services.AddSingleton<IWebhookIngressService, WebhookIngressService>();
@@ -60,13 +60,13 @@ public static class DependencyInjection
             .Validate(options => options.Cooldown > TimeSpan.Zero, "Voting cooldown must be greater than zero.")
             .Validate(options => options.ProcessedEventRetention > TimeSpan.Zero, "Processed event retention must be greater than zero.")
             .Validate(options => options.ProcessingLockTimeout > TimeSpan.Zero, "Processing lock timeout must be greater than zero.")
-            .Validate(options => !string.IsNullOrWhiteSpace(options.PayloadSignatureSecret), "Voting payload signature secret is required.")
+            .Validate(options => ConfigurationSecretGuard.HasUsableSecret(options.PayloadSignatureSecret), "Voting payload signature secret is required and cannot be a placeholder.")
             .ValidateOnStart();
 
         services.AddOptions<DataErasureOptions>()
             .Bind(configuration.GetSection(DataErasureOptions.SectionName))
             .Validate(options => options.ConfirmationTimeout > TimeSpan.Zero, "Data erasure confirmation timeout must be greater than zero.")
-            .Validate(options => !string.IsNullOrWhiteSpace(options.ConfirmationPayloadSecret), "Data erasure confirmation payload secret is required.")
+            .Validate(options => ConfigurationSecretGuard.HasUsableSecret(options.ConfirmationPayloadSecret), "Data erasure confirmation payload secret is required and cannot be a placeholder.")
             .ValidateOnStart();
 
         services.AddOptions<CandidatesOptions>()

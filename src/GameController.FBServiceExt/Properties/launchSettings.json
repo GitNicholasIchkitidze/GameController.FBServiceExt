@@ -25,7 +25,8 @@
                                          "launchBrowser":  true,
                                          "launchUrl":  "dev/metrics",
                                          "environmentVariables":  {
-                                                                      "ASPNETCORE_ENVIRONMENT":  "Development"
+                                                                      "ASPNETCORE_ENVIRONMENT":  "Development",
+                                                                      "DOTNET_ENVIRONMENT":  "Development"
                                                                   }
                                      },
                      "Simulator":  {

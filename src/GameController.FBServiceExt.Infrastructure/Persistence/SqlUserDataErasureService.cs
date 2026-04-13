@@ -1,4 +1,4 @@
-﻿using GameController.FBServiceExt.Application.Abstractions.Persistence;
+using GameController.FBServiceExt.Application.Abstractions.Persistence;
 using GameController.FBServiceExt.Application.Contracts.Persistence;
 using GameController.FBServiceExt.Infrastructure.Data;
 using GameController.FBServiceExt.Infrastructure.Options;
@@ -25,6 +25,8 @@ internal sealed class SqlUserDataErasureService : IUserDataErasureService
         _redisOptionsMonitor = redisOptionsMonitor;
     }
 
+    // forget-me flow-ისას მომხმარებლის SQL მონაცემებს შლის: AcceptedVotes და NormalizedEvents.
+    // შემდეგ შესაბამის Redis state-საც ასუფთავებს.
     public async ValueTask<UserDataErasureResult> EraseUserDataAsync(string userId, CancellationToken cancellationToken)
     {
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -57,6 +59,7 @@ internal sealed class SqlUserDataErasureService : IUserDataErasureService
         });
     }
 
+    // SQL erase-ის შემდეგ მომხმარებელთან დაკავშირებულ Redis cache/dedupe/cooldown key-ებს შლის.
     private async Task DeleteRedisUserStateAsync(string userId, IReadOnlyCollection<string> eventIds, CancellationToken cancellationToken)
     {
         var connection = await _redisConnectionProvider.GetConnectionAsync(cancellationToken);

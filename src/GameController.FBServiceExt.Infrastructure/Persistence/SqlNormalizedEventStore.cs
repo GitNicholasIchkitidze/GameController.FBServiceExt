@@ -15,6 +15,7 @@ internal sealed class SqlNormalizedEventStore : INormalizedEventStore
         _dbContextFactory = dbContextFactory;
     }
 
+    // საჭიროების შემთხვევაში normalized event-ს audit/debug მიზნებისთვის NormalizedEvents ცხრილში წერს.
     public async ValueTask<bool> TryAddAsync(NormalizedMessengerEvent normalizedEvent, CancellationToken cancellationToken)
     {
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);

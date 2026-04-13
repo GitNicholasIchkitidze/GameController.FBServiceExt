@@ -17,11 +17,15 @@ const lastRefresh = document.getElementById('lastRefresh');
 const apiInstanceCount = document.getElementById('apiInstanceCount');
 const workerInstanceCount = document.getElementById('workerInstanceCount');
 const activeShowIdText = document.getElementById('activeShowIdText');
+const defaultActiveShowIdText = document.getElementById('defaultActiveShowIdText');
+const defaultActiveShowIdValue = document.getElementById('defaultActiveShowIdValue');
 const activeShowIdInput = document.getElementById('activeShowIdInput');
 const votingState = document.getElementById('votingState');
 const votingHint = document.getElementById('votingHint');
 const currentValue = document.getElementById('currentValue');
 const effectText = document.getElementById('effectText');
+const applyShowButton = document.getElementById('applyShowButton');
+const useDefaultShowButton = document.getElementById('useDefaultShowButton');
 const turnOnButton = document.getElementById('turnOnButton');
 const turnOffButton = document.getElementById('turnOffButton');
 const actionMessage = document.getElementById('actionMessage');
@@ -34,6 +38,9 @@ let paused = false;
 let refreshTimer = null;
 let requestInFlight = false;
 let updateInFlight = false;
+let currentVotingStarted = false;
+let currentActiveShowId = '';
+let configuredDefaultActiveShowId = '';
 
 const tooltips = {
   loginSub: 'ოპერატორის გვერდი, საიდანაც იცვლება VotingStarted და ჩანს live runtime სურათი.',
@@ -340,8 +347,12 @@ function applyVotingState(started, activeShowId = '') {
   votingHint.textContent = started
     ? (activeShowId ? 'Traffic is processed normally.' : 'VotingStarted is ON, but ActiveShowId is not configured yet.')
     : 'Regular vote traffic is dropped early.';
+  currentVotingStarted = started;
+  currentActiveShowId = activeShowId || '';
   turnOnButton.disabled = updateInFlight || started;
   turnOffButton.disabled = updateInFlight || !started;
+  applyShowButton.disabled = updateInFlight;
+  useDefaultShowButton.disabled = updateInFlight || !configuredDefaultActiveShowId;
 }
 
 function showDashboard(username) {
@@ -423,8 +434,12 @@ function renderDashboard(payload) {
 
   showDashboard(payload.operator);
   const activeShowId = payload.activeShowId || '';
+  const defaultShowId = payload.configuredDefaultActiveShowId || '';
+  configuredDefaultActiveShowId = defaultShowId;
   applyVotingState(!!payload.votingStarted, activeShowId);
   activeShowIdText.textContent = activeShowId || '-';
+  defaultActiveShowIdText.textContent = defaultShowId || '-';
+  defaultActiveShowIdValue.textContent = defaultShowId || '-';
   if (document.activeElement !== activeShowIdInput) {
     activeShowIdInput.value = activeShowId;
   }
@@ -487,14 +502,14 @@ function renderDashboard(payload) {
 
 async function updateVoting(started) {
   updateInFlight = true;
-  applyVotingState(started, activeShowIdInput.value.trim());
+  applyVotingState(started, currentActiveShowId);
   setMessage(actionMessage, `Updating runtime state to VotingStarted=${started}...`);
 
   try {
     const payload = await fetchJson('/admin/api/voting', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ votingStarted: started, activeShowId: activeShowIdInput.value.trim() || null })
+      body: JSON.stringify({ votingStarted: started, activeShowId: currentActiveShowId || null })
     }, true);
 
     if (payload.unauthorized) {
@@ -511,6 +526,49 @@ async function updateVoting(started) {
   }
 }
 
+async function updateActiveShowId() {
+  updateInFlight = true;
+  applyShowButton.disabled = true;
+  useDefaultShowButton.disabled = true;
+  turnOnButton.disabled = true;
+  turnOffButton.disabled = true;
+  setMessage(actionMessage, `Applying ActiveShowId='${activeShowIdInput.value.trim() || '-'}'...`);
+
+  try {
+    const payload = await fetchJson('/admin/api/voting/active-show', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activeShowId: activeShowIdInput.value.trim() || null })
+    }, true);
+
+    if (payload.unauthorized) {
+      showLogin('Session expired. Please sign in again.');
+      return;
+    }
+
+    renderDashboard(payload);
+    setMessage(actionMessage,
+      payload.activeShowId
+        ? `ActiveShowId changed to '${payload.activeShowId}'. VotingStarted=${payload.votingStarted}.`
+        : 'ActiveShowId was cleared. Voting flow will stay blocked until a show is set.',
+      'success');
+  } catch (error) {
+    setMessage(actionMessage, `Failed to update ActiveShowId: ${error.message}`, 'error');
+  } finally {
+    updateInFlight = false;
+    await loadDashboard();
+  }
+}
+
+function applyConfiguredDefaultShow() {
+  if (!configuredDefaultActiveShowId) {
+    setMessage(actionMessage, 'Configured default ActiveShowId is not set for this environment.', 'error');
+    return;
+  }
+
+  activeShowIdInput.value = configuredDefaultActiveShowId;
+  setMessage(actionMessage, `Loaded configured default ActiveShowId '${configuredDefaultActiveShowId}' into the input.`);
+}
 function scheduleRefresh() {
   if (refreshTimer) {
     clearInterval(refreshTimer);
@@ -586,6 +644,10 @@ refreshSelect.addEventListener('change', scheduleRefresh);
 logoutButton.addEventListener('click', () => {
   void handleLogout();
 });
+applyShowButton.addEventListener('click', () => {
+  void updateActiveShowId();
+});
+useDefaultShowButton.addEventListener('click', applyConfiguredDefaultShow);
 turnOnButton.addEventListener('click', () => {
   void updateVoting(true);
 });
@@ -602,6 +664,7 @@ applyStaticTitles();
     await loadDashboard();
   }
 })();
+
 
 
 

@@ -9,6 +9,8 @@ namespace GameController.FBServiceExt.Application.Services;
 
 public sealed class RawWebhookNormalizer : IRawWebhookNormalizer
 {
+    // Meta webhook JSON-ს შლის ცალკეულ normalized event-ებად.
+    // აქ messaging/standby მასივები ქცევა queue-ში გადასაცემ ერთეულებად.
     public ValueTask<IReadOnlyList<NormalizedMessengerEvent>> NormalizeAsync(RawWebhookEnvelope envelope, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(envelope.Body))
@@ -33,6 +35,7 @@ public sealed class RawWebhookNormalizer : IRawWebhookNormalizer
         return ValueTask.FromResult<IReadOnlyList<NormalizedMessengerEvent>>(results);
     }
 
+    // ერთი entry-დან თითოეულ messaging/standby item-ს გარდაქმნის NormalizedMessengerEvent-ად.
     private static void AppendEvents(
         ICollection<NormalizedMessengerEvent> results,
         JsonElement entry,

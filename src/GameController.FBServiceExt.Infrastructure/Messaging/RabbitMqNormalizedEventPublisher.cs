@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Text;
 using GameController.FBServiceExt.Application.Abstractions.Messaging;
 using GameController.FBServiceExt.Application.Contracts.Normalization;
@@ -29,6 +29,8 @@ internal sealed class RabbitMqNormalizedEventPublisher : INormalizedEventPublish
         _logger = logger;
     }
 
+    // normalize-ის შემდეგ მიღებულ event-ებს normalized-event queue-ში აგზავნის batch-ად.
+    // შემდეგ ეტაპზე ამ queue-ს NormalizedEventProcessorWorker მოიხმარს.
     public async ValueTask PublishBatchAsync(IReadOnlyCollection<NormalizedMessengerEvent> events, CancellationToken cancellationToken)
     {
         if (events.Count == 0)
@@ -118,6 +120,7 @@ internal sealed class RabbitMqNormalizedEventPublisher : INormalizedEventPublish
         }
     }
 
+    // normalized publisher-ის channel pool-ს ამზადებს მაღალი დატვირთვისთვის.
     private async ValueTask EnsurePoolAsync(RabbitMqOptions options, CancellationToken cancellationToken)
     {
         if (_initialized)

@@ -87,6 +87,7 @@ public sealed class RedisFakeMetaMessengerStore
         return AppendAsync(message, cancellationToken);
     }
 
+    // fake-meta endpoint-ზე მოსულ outbound request-ს შლის და simulator-readable ფორმატით ინახავს.
     public async ValueTask<FakeMetaOutboundMessage> CaptureRequestAsync(
         string recipientId,
         string version,
@@ -113,6 +114,7 @@ public sealed class RedisFakeMetaMessengerStore
         return await AppendAsync(outbound, cancellationToken);
     }
 
+    // კონკრეტული recipient-ისთვის დაგროვილ outbound შეტყობინებებს sequence-ის მიხედვით აბრუნებს.
     public async ValueTask<IReadOnlyList<FakeMetaOutboundMessage>> GetMessagesAsync(
         string recipientId,
         long afterSequence,
@@ -149,6 +151,7 @@ public sealed class RedisFakeMetaMessengerStore
         return results;
     }
 
+    // simulator polling-ისთვის ცოტა ხანს ელოდება ახალ outbound message-ებს და შემდეგ აბრუნებს სიას.
     public async ValueTask<IReadOnlyList<FakeMetaOutboundMessage>> WaitForMessagesAsync(
         string recipientId,
         long afterSequence,
@@ -184,6 +187,7 @@ public sealed class RedisFakeMetaMessengerStore
         }
     }
 
+    // fake-meta capture state-ს მთლიანად წმენდს Redis-იდან ახალი სიმულაციის დაწყებამდე.
     public async ValueTask ClearAsync(CancellationToken cancellationToken)
     {
         var database = await _redisConnectionProvider.GetDatabaseAsync(cancellationToken);
@@ -211,6 +215,7 @@ public sealed class RedisFakeMetaMessengerStore
         }
     }
 
+    // outbound fake-meta message-ს sequence ანიჭებს, Redis-ში ინახავს და subscriber-ებს ატყობინებს.
     private async ValueTask<FakeMetaOutboundMessage> AppendAsync(FakeMetaOutboundMessage message, CancellationToken cancellationToken)
     {
         var connection = await _redisConnectionProvider.GetConnectionAsync(cancellationToken);

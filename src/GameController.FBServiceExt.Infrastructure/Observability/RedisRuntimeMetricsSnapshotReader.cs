@@ -21,6 +21,7 @@ internal sealed class RedisRuntimeMetricsSnapshotReader : IRuntimeMetricsSnapsho
         _redisOptionsMonitor = redisOptionsMonitor;
     }
 
+    // Redis-ში გამოქვეყნებულ ყველა ცოცხალ metrics snapshot-ს კითხულობს dashboard-ებისთვის.
     public async ValueTask<IReadOnlyList<RuntimeMetricsSnapshot>> ListSnapshotsAsync(CancellationToken cancellationToken)
     {
         var db = await _redisConnectionProvider.GetDatabaseAsync(cancellationToken);

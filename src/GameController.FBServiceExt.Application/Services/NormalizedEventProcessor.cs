@@ -83,6 +83,8 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
         _logger = logger;
     }
 
+    // normalized event-?? ?????????? orchestrator.
+    // Flow: dedupe -> lock -> ProcessMessageAsync / ProcessPostbackAsync -> optional persistence -> mark processed.
     public async ValueTask ProcessAsync(NormalizedMessengerEvent normalizedEvent, CancellationToken cancellationToken)
     {
         if (normalizedEvent.EventType is not (MessengerEventType.Message or MessengerEventType.Postback))
@@ -181,6 +183,8 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
         return MatchesVoteStartToken(text, _workflowOptionsMonitor.CurrentValue) || MatchesForgetMeToken(text);
     }
 
+    // ??????? inbound message-? ?????????.
+    // ???????? ???: GET_STARTED -> active voting check -> cooldown check -> candidate carousel.
     private async ValueTask<EventProcessingResult> ProcessMessageAsync(
         NormalizedMessengerEvent normalizedEvent,
         VotingWorkflowOptions workflow,
@@ -198,23 +202,11 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
             return default;
         }
 
-        var votingContext = await GetActiveVotingContextOrNotifyInactiveAsync(normalizedEvent.SenderId!, normalizedEvent.RecipientId!, cancellationToken);
-        if (votingContext is null)
-        {
-            return default;
-        }
-
-        var now = GetUtcNow();
-        if (await TryHandleCooldownAsync(normalizedEvent, workflow, votingContext.ShowId, now, fromPostback: false, cancellationToken))
-        {
-            return default;
-        }
-
-        _runtimeMetricsCollector.Increment("worker.processor.options_sent");
-        await TrySendCandidateCarouselAsync(normalizedEvent.SenderId!, normalizedEvent.RecipientId!, votingContext.ShowId, cancellationToken);
-        return default;
+        return await ProcessVoteStartAsync(normalizedEvent, workflow, fromPostback: false, cancellationToken);
     }
 
+    // postback event-?? dispatcher.
+    // payload-?? ??????: GET_STARTED, forget-me, vote selection ?? vote confirmation.
     private async ValueTask<EventProcessingResult> ProcessPostbackAsync(
         NormalizedMessengerEvent normalizedEvent,
         VotingWorkflowOptions workflow,
@@ -226,6 +218,11 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
         {
             _runtimeMetricsCollector.Increment("worker.processor.ignored");
             return default;
+        }
+
+        if (MatchesVoteStartToken(payload, workflow))
+        {
+            return await ProcessVoteStartAsync(normalizedEvent, workflow, fromPostback: true, cancellationToken);
         }
 
         var dataErasureOptions = _dataErasureOptionsMonitor.CurrentValue;
@@ -272,6 +269,32 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
         return default;
     }
 
+    // vote flow-?? entrypoint ?????? message text-????, ??? GET_STARTED postback-????.
+    // active voting/cooldown-? ???????? ?? ???????????? ???????? ????????.
+    private async ValueTask<EventProcessingResult> ProcessVoteStartAsync(
+        NormalizedMessengerEvent normalizedEvent,
+        VotingWorkflowOptions workflow,
+        bool fromPostback,
+        CancellationToken cancellationToken)
+    {
+        var votingContext = await GetActiveVotingContextOrNotifyInactiveAsync(normalizedEvent.SenderId!, normalizedEvent.RecipientId!, cancellationToken);
+        if (votingContext is null)
+        {
+            return default;
+        }
+
+        var now = GetUtcNow();
+        if (await TryHandleCooldownAsync(normalizedEvent, workflow, votingContext.ShowId, now, fromPostback, cancellationToken))
+        {
+            return default;
+        }
+
+        _runtimeMetricsCollector.Increment("worker.processor.options_sent");
+        await TrySendCandidateCarouselAsync(normalizedEvent.SenderId!, normalizedEvent.RecipientId!, votingContext.ShowId, cancellationToken);
+        return default;
+    }
+    // კანდიდატის არჩევის ეტაპი.
+    // ამოწმებს show/cooldown-ს და ან confirmation prompt-ს აგზავნის, ან ხმას პირდაპირ ადასტურებს.
     private async ValueTask<EventProcessingResult> ProcessVoteSelectionAsync(
         NormalizedMessengerEvent normalizedEvent,
         VotingWorkflowOptions workflow,
@@ -314,6 +337,8 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
         return default;
     }
 
+    // confirmation postback-ის ეტაპი.
+    // accept/reject-ის მიხედვით ან საბოლოოდ ადასტურებს ხმას, ან თავიდან აგზავნის flow-ს.
     private async ValueTask<EventProcessingResult> ProcessVoteConfirmationAsync(
         NormalizedMessengerEvent normalizedEvent,
         VotingWorkflowOptions workflow,
@@ -421,6 +446,8 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
         return default;
     }
 
+    // დაზიანებული, ვადაგასული ან stale payload-ის აღდგენის გზა.
+    // მომხმარებელს თავიდან აგზავნის candidate carousel-ს, რომ flow სუფთად დაიწყოს.
     private async ValueTask<EventProcessingResult> RecoverVoteFlowAsync(
         NormalizedMessengerEvent normalizedEvent,
         VotingWorkflowOptions workflow,
@@ -457,6 +484,7 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
         return default;
     }
 
+    // ხმის საბოლოო acceptance: ინახავს AcceptedVote-ს, აახლებს cooldown-ს და აგზავნის წარმატების ტექსტს.
     private async ValueTask AcceptVoteAsync(
         NormalizedMessengerEvent normalizedEvent,
         VotingWorkflowOptions workflow,
@@ -506,6 +534,8 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
             cooldownUntilUtc);
     }
 
+    // ამოწმებს ვოტინგი და ActiveShowId აქტიურია თუ არა.
+    // თუ არა, მომხმარებელს inactivity ტექსტს უგზავნის და flow აქვე წყდება.
     private async ValueTask<ActiveVotingContext?> GetActiveVotingContextOrNotifyInactiveAsync(
         string recipientId,
         string pageId,
@@ -525,6 +555,8 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
         return new ActiveVotingContext(state.ActiveShowId.Trim());
     }
 
+    // ამოწმებს მომხმარებლის აქტიურ cooldown-ს.
+    // cooldown თუ ჯერ მოქმედებს, შესაბამის ტექსტს აგზავნის და მიმდინარე flow-ს აჩერებს.
     private async ValueTask<bool> TryHandleCooldownAsync(
         NormalizedMessengerEvent normalizedEvent,
         VotingWorkflowOptions workflow,
@@ -607,6 +639,8 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
         await TrySendTextMessageAsync(recipientId, messageText, "worker.outbound.cooldown_active", cancellationToken);
     }
 
+    // outbound ეტაპი, სადაც მომხმარებელს candidate carousel ეგზავნება.
+    // შემდეგი მოსალოდნელი ნაბიჯია vote-selection postback.
     private async ValueTask TrySendCandidateCarouselAsync(
         string recipientId,
         string pageId,
@@ -641,6 +675,8 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
         await TrySendGenericTemplateAsync(recipientId, elements, "worker.outbound.candidate_carousel", "Candidate carousel", cancellationToken);
     }
 
+    // outbound confirmation ეტაპი.
+    // შემდეგი მოსალოდნელი ნაბიჯია confirmation postback accept/reject.
     private async ValueTask TrySendVoteConfirmationPromptAsync(
         string recipientId,
         string pageId,
@@ -1188,4 +1224,6 @@ public sealed class NormalizedEventProcessor : INormalizedEventProcessor
         Cancel
     }
 }
+
+
 
