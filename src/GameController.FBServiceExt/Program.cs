@@ -51,7 +51,7 @@ try
         .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true);
 
 
-    builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true);
+    TryAddLocalUserSecrets(builder.Configuration, environmentName, Assembly.GetExecutingAssembly());
 
     builder.Configuration.AddEnvironmentVariables();
 
@@ -81,6 +81,8 @@ try
             loggerConfiguration.Enrich.With(new CallerInfoEnricher("GameController.FBServiceExt"));
         }
     });
+
+    var relaxLocalPortalValidation = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Simulator");
 
     builder.Services.AddProblemDetails();
     builder.Services.AddControllers();
@@ -140,14 +142,24 @@ try
     builder.Services.AddAuthorization();
     builder.Services.AddOptions<AdminPortalOptions>()
         .Bind(builder.Configuration.GetSection(AdminPortalOptions.SectionName))
-        .Validate(static options =>
-                !string.IsNullOrWhiteSpace(options.Username) &&
-                GameController.FBServiceExt.Application.Options.ConfigurationSecretGuard.HasUsableSecret(options.Password),
+        .Validate(options =>
+                relaxLocalPortalValidation ||
+                (!string.IsNullOrWhiteSpace(options.Username) &&
+                 GameController.FBServiceExt.Application.Options.ConfigurationSecretGuard.HasUsableSecret(options.Password)),
             "AdminPortal username is required and password cannot be empty or placeholder.")
         .ValidateOnStart();
     builder.Services.AddOptions<DevLogViewerOptions>()
         .Bind(builder.Configuration.GetSection(DevLogViewerOptions.SectionName))
-        .Validate(static options =>
+        .PostConfigure(options =>
+        {
+            if (relaxLocalPortalValidation &&
+                (string.IsNullOrWhiteSpace(options.Username) ||
+                 !GameController.FBServiceExt.Application.Options.ConfigurationSecretGuard.HasUsableSecret(options.Password)))
+            {
+                options.Enabled = false;
+            }
+        })
+        .Validate(options =>
                 !options.Enabled ||
                 (!string.IsNullOrWhiteSpace(options.Username) &&
                  GameController.FBServiceExt.Application.Options.ConfigurationSecretGuard.HasUsableSecret(options.Password)),
@@ -588,6 +600,27 @@ finally
     Log.CloseAndFlush();
 }
 
+static void TryAddLocalUserSecrets(IConfigurationBuilder configurationBuilder, string environmentName, Assembly assembly)
+{
+    if (!string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase) &&
+        !string.Equals(environmentName, "Simulator", StringComparison.OrdinalIgnoreCase))
+    {
+        return;
+    }
+
+    try
+    {
+        configurationBuilder.AddUserSecrets(assembly, optional: true);
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        Console.Error.WriteLine($"Skipping user secrets for {environmentName}: {ex.Message}");
+    }
+    catch (IOException ex)
+    {
+        Console.Error.WriteLine($"Skipping user secrets for {environmentName}: {ex.Message}");
+    }
+}
 static bool IsLocalRequest(HttpContext httpContext)
 {
     var remoteIpAddress = httpContext.Connection.RemoteIpAddress;
@@ -661,6 +694,8 @@ internal sealed record AdminDashboardResponse(
     string Operator,
     string Source,
     RuntimeMetricsDashboardSnapshot Metrics);
+
+
 
 
 

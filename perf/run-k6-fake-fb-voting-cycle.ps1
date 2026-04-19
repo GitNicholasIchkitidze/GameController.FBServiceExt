@@ -95,14 +95,20 @@ function New-ThresholdResult {
 }
 
 function Get-MessengerContentDefaults {
-    param([Parameter(Mandatory = $true)][string]$ConfigurationPath)
+    param([Parameter(Mandatory = $true)][string[]]$ConfigurationPaths)
 
-    if (-not (Test-Path $ConfigurationPath)) {
-        return $null
+    foreach ($configurationPath in $ConfigurationPaths) {
+        if (-not (Test-Path $configurationPath)) {
+            continue
+        }
+
+        $config = Get-Content $configurationPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($null -ne $config.PSObject.Properties['MessengerContent']) {
+            return $config.MessengerContent
+        }
     }
 
-    $config = Get-Content $ConfigurationPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    return $config.MessengerContent
+    return $null
 }
 
 function Get-SqlVoteCounts {
@@ -151,16 +157,21 @@ $summaryPath = Join-Path $artifactDir 'k6-summary.json'
 $normalizedSummaryPath = Join-Path $artifactDir 'k6-summary.normalized.json'
 $normalizedSummaryTextPath = Join-Path $artifactDir 'k6-summary.normalized.txt'
 $queuePath = Join-Path $artifactDir 'queue-drain.json'
-$workerConfigPath = Join-Path $solutionRoot 'src\GameController.FBServiceExt.Worker\appsettings.json'
+$messengerContentConfigPaths = @(
+    (Join-Path $solutionRoot 'appsettings.Shared.json'),
+    (Join-Path $solutionRoot 'appsettings.Shared.PerformanceFakeFb.json'),
+    (Join-Path $solutionRoot 'src\GameController.FBServiceExt.Worker\appsettings.json'),
+    (Join-Path $solutionRoot 'src\GameController.FBServiceExt.Worker\appsettings.PerformanceFakeFb.json')
+)
 
 New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
 
-$messengerContentDefaults = Get-MessengerContentDefaults -ConfigurationPath $workerConfigPath
+$messengerContentDefaults = Get-MessengerContentDefaults -ConfigurationPaths $messengerContentConfigPaths
 if ($null -ne $messengerContentDefaults) {
     if ([string]::IsNullOrWhiteSpace($VoteAcceptedTextFormat)) { $VoteAcceptedTextFormat = [string]$messengerContentDefaults.VoteAcceptedTextFormat }
     if ([string]::IsNullOrWhiteSpace($CooldownActiveTextFormat)) { $CooldownActiveTextFormat = [string]$messengerContentDefaults.CooldownActiveTextFormat }
-    if ([string]::IsNullOrWhiteSpace($VoteConfirmationRejectedText)) { $VoteConfirmationRejectedText = [string]$messengerContentDefaults.VoteConfirmationRejectedText }
-    if ([string]::IsNullOrWhiteSpace($VoteConfirmationExpiredText)) { $VoteConfirmationExpiredText = [string]$messengerContentDefaults.VoteConfirmationExpiredText }
+    if ([string]::IsNullOrWhiteSpace($VoteConfirmationRejectedText) -and $null -ne $messengerContentDefaults.PSObject.Properties['VoteConfirmationRejectedText']) { $VoteConfirmationRejectedText = [string]$messengerContentDefaults.VoteConfirmationRejectedText }
+    if ([string]::IsNullOrWhiteSpace($VoteConfirmationExpiredText) -and $null -ne $messengerContentDefaults.PSObject.Properties['VoteConfirmationExpiredText']) { $VoteConfirmationExpiredText = [string]$messengerContentDefaults.VoteConfirmationExpiredText }
 }
 
 if ([string]::IsNullOrWhiteSpace($VoteAcceptedTextFormat)) {
@@ -477,3 +488,5 @@ Write-Host "Normalized text summary: $normalizedSummaryTextPath"
 if (-not $SkipQueueDrainCheck) {
     Write-Host "Queue snapshot: $queuePath"
 }
+
+

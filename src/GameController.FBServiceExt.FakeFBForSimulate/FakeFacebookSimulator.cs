@@ -797,7 +797,10 @@ internal sealed record SimulatorRunSettings(
 	int FailureBackoffMaxSeconds,
 	string ActiveShowId,
 	bool ConfigureVotingGateOnStart,
-	SimulatorTextPatterns TextPatterns);
+	SimulatorTextPatterns TextPatterns,
+	string ManagedWorkerEnvironmentName,
+	string ManagedWorkerOutboundMode,
+	string ManagedWorkerExecutablePath);
 
 internal sealed record SimulatorTextPatterns(
 	IReadOnlyList<string> CooldownFragments,
@@ -968,6 +971,8 @@ internal enum FakeConfirmationAction
 	Accept,
 	Decoy
 }
+
+
 
 
 

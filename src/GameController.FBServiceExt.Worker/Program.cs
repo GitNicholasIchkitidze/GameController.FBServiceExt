@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Reflection;
 using GameController.FBServiceExt.Application;
 using GameController.FBServiceExt.Application.Options;
@@ -26,7 +26,7 @@ try
         .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
         .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true);
 
-    builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true);
+    TryAddLocalUserSecrets(builder.Configuration, environmentName, Assembly.GetExecutingAssembly());
 
     builder.Configuration.AddEnvironmentVariables();
 
@@ -101,6 +101,27 @@ finally
     Log.CloseAndFlush();
 }
 
+static void TryAddLocalUserSecrets(IConfigurationBuilder configurationBuilder, string environmentName, Assembly assembly)
+{
+    if (!string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase) &&
+        !string.Equals(environmentName, "Simulator", StringComparison.OrdinalIgnoreCase))
+    {
+        return;
+    }
+
+    try
+    {
+        configurationBuilder.AddUserSecrets(assembly, optional: true);
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        Console.Error.WriteLine($"Skipping user secrets for {environmentName}: {ex.Message}");
+    }
+    catch (IOException ex)
+    {
+        Console.Error.WriteLine($"Skipping user secrets for {environmentName}: {ex.Message}");
+    }
+}
 static string[] AddSharedJsonFiles(IConfigurationBuilder configurationBuilder, string contentRootPath, string environmentName)
 {
     var sharedPaths = ResolveSharedConfigPaths(contentRootPath, environmentName).ToArray();
@@ -166,6 +187,7 @@ static string ResolveEffectiveSimulatorGraphApiBaseUrl(string? baseUrl)
     => string.IsNullOrWhiteSpace(baseUrl)
         ? MetaMessengerOptions.DefaultSimulatorGraphApiBaseUrl
         : baseUrl.Trim().TrimEnd('/');
+
 
 
 

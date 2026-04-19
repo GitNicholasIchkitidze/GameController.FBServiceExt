@@ -49,6 +49,7 @@ $metricsJson = Join-Path $runDir 'metrics.json'
 $queuesJson = Join-Path $runDir 'queues.json'
 $dbSummaryJson = Join-Path $runDir 'db-summary.json'
 $summaryTxt = Join-Path $runDir 'summary.txt'
+$headlessSummaryJson = Join-Path $runDir 'headless-summary.json'
 
 function Stop-ExistingProcesses {
     [void](& cmd.exe /c 'taskkill /F /IM GameController.FBServiceExt.exe /T >nul 2>&1')
@@ -140,29 +141,34 @@ function Start-LoggedProcess {
         [string]$StdErrPath
     )
 
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = $FileName
-    $psi.Arguments = $Arguments
-    $psi.WorkingDirectory = $WorkingDirectory
-    $psi.UseShellExecute = $false
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-
-    foreach ($entry in $Environment.GetEnumerator()) {
-        $psi.Environment[$entry.Key] = [string]$entry.Value
+    foreach ($path in @($StdOutPath, $StdErrPath)) {
+        $directory = Split-Path $path -Parent
+        if (-not [string]::IsNullOrWhiteSpace($directory)) { New-Item -ItemType Directory -Force -Path $directory | Out-Null }
+        [System.IO.File]::WriteAllText($path, "", [System.Text.Encoding]::UTF8)
     }
 
-    $process = New-Object System.Diagnostics.Process
-    $process.StartInfo = $psi
-    $null = $process.Start()
+    $previousEnvironment = @{}
+    foreach ($entry in $Environment.GetEnumerator()) {
+        $previousEnvironment[$entry.Key] = [Environment]::GetEnvironmentVariable($entry.Key, 'Process')
+        [Environment]::SetEnvironmentVariable($entry.Key, [string]$entry.Value, 'Process')
+    }
 
-    $stdoutTask = [System.Threading.Tasks.Task[string]]::Run([Func[string]]{ $process.StandardOutput.ReadToEnd() })
-    $stderrTask = [System.Threading.Tasks.Task[string]]::Run([Func[string]]{ $process.StandardError.ReadToEnd() })
+    try {
+        if ([string]::IsNullOrWhiteSpace($Arguments)) {
+            $process = Start-Process -FilePath $FileName -WorkingDirectory $WorkingDirectory -RedirectStandardOutput $StdOutPath -RedirectStandardError $StdErrPath -PassThru -WindowStyle Hidden
+        }
+        else {
+            $process = Start-Process -FilePath $FileName -ArgumentList $Arguments -WorkingDirectory $WorkingDirectory -RedirectStandardOutput $StdOutPath -RedirectStandardError $StdErrPath -PassThru -WindowStyle Hidden
+        }
+    }
+    finally {
+        foreach ($entry in $Environment.GetEnumerator()) {
+            [Environment]::SetEnvironmentVariable($entry.Key, $previousEnvironment[$entry.Key], 'Process')
+        }
+    }
 
     [pscustomobject]@{
         Process = $process
-        StdOutTask = $stdoutTask
-        StdErrTask = $stderrTask
         StdOutPath = $StdOutPath
         StdErrPath = $StdErrPath
     }
@@ -184,21 +190,7 @@ function Stop-LoggedProcess {
     $process = $Handle.Process
     if ($process -and -not $process.HasExited) {
         try { $process.Kill($true) } catch {}
-        $null = $process.WaitForExit(3000)
-    }
-
-    if ($Handle.StdOutTask.Wait(3000)) {
-        [System.IO.File]::WriteAllText($Handle.StdOutPath, $Handle.StdOutTask.Result, [System.Text.Encoding]::UTF8)
-    }
-    else {
-        [System.IO.File]::WriteAllText($Handle.StdOutPath, '[log capture incomplete]', [System.Text.Encoding]::UTF8)
-    }
-
-    if ($Handle.StdErrTask.Wait(3000)) {
-        [System.IO.File]::WriteAllText($Handle.StdErrPath, $Handle.StdErrTask.Result, [System.Text.Encoding]::UTF8)
-    }
-    else {
-        [System.IO.File]::WriteAllText($Handle.StdErrPath, '[log capture incomplete]', [System.Text.Encoding]::UTF8)
+        try { $null = $process.WaitForExit(3000) } catch {}
     }
 
     if ($process) { $process.Dispose() }
@@ -215,6 +207,11 @@ function Wait-ForApiHealth {
         Start-Sleep -Seconds 2
     }
     throw 'API health endpoint did not become ready in time.'
+}
+
+function Set-VotingGateActive {
+    $body = @{ votingStarted = $true; activeShowId = 'show1' } | ConvertTo-Json
+    Invoke-WebRequest -Uri 'http://127.0.0.1:5277/dev/admin/api/voting' -Method Put -ContentType 'application/json' -Body $body -UseBasicParsing -TimeoutSec 10 | Out-Null
 }
 
 function Wait-ForWorkerConsumers {
@@ -291,7 +288,7 @@ function Invoke-HeadlessSimulator {
         [string]$LogPath
     )
 
-    & $simExe --headless --users $SimUsers --duration-seconds $SimDurationSeconds --cooldown-seconds 60 --startup-jitter-seconds $SimStartupJitterSeconds --min-think-ms $SimMinThinkMilliseconds --max-think-ms $SimMaxThinkMilliseconds --outbound-wait-seconds $SimOutboundWaitSeconds 2>&1 | Tee-Object -FilePath $LogPath
+    & $simExe --headless --users $SimUsers --duration-seconds $SimDurationSeconds --cooldown-seconds 60 --startup-jitter-seconds $SimStartupJitterSeconds --min-think-ms $SimMinThinkMilliseconds --max-think-ms $SimMaxThinkMilliseconds --outbound-wait-seconds $SimOutboundWaitSeconds --configure-voting-gate-on-start false 2>&1 | Tee-Object -FilePath $LogPath
     if ($null -ne $LASTEXITCODE) { return $LASTEXITCODE }
     return 0
 }
@@ -299,7 +296,7 @@ function Invoke-HeadlessSimulator {
 function Write-RunSummary {
     try {
         $simLogContent = Get-Content -Path $simLog -Raw
-        $match = [regex]::Match($simLogContent, 'FinalSnapshot:\s+active=(?<active>\d+),\s+started=(?<started>\d+),\s+completed=(?<completed>\d+),\s+failed=(?<failed>\d+),\s+webhookAttempts=(?<attempts>\d+),\s+webhookSuccesses=(?<successes>\d+),\s+webhookFailures=(?<failures>\d+),\s+outbound=(?<outbound>\d+),\s+acceptedTexts=(?<accepted>\d+),\s+unexpectedShapes=(?<unexpected>\d+),\s+averageCompletedCycleMs=(?<avg>[0-9.]+)')
+        $match = [regex]::Match($simLogContent, 'FinalSnapshot:\s+active=(?<active>\d+),\s+started=(?<started>\d+),\s+completed=(?<completed>\d+),\s+failed=(?<failed>\d+),\s+webhookAttempts=(?<attempts>\d+),\s+webhookSuccesses=(?<successes>\d+),\s+webhookFailures=(?<failures>\d+),\s+outbound=(?<outbound>\d+),\s+carousels=(?<carousels>\d+),\s+confirmations=(?<confirmations>\d+),\s+acceptedTexts=(?<accepted>\d+),\s+carouselTimeouts=(?<carouselTimeouts>\d+),\s+confirmationTimeouts=(?<confirmationTimeouts>\d+),\s+finalTextTimeouts=(?<finalTextTimeouts>\d+),\s+lateAccepted=(?<lateAccepted>\d+),\s+unexpectedShapes=(?<unexpected>\d+),\s+averageCompletedCycleMs=(?<avg>[0-9.]+)')
         $dbRows = Get-DbCounts
 
         $lines = [System.Collections.Generic.List[string]]::new()
@@ -316,6 +313,71 @@ function Write-RunSummary {
 
         if ($match.Success) {
             $attempts = [double]$match.Groups['attempts'].Value
+            $started = [double]$match.Groups['started'].Value
+            $completed = [double]$match.Groups['completed'].Value
+            $failures = [double]$match.Groups['failures'].Value
+            $carousels = [double]$match.Groups['carousels'].Value
+            $confirmations = [double]$match.Groups['confirmations'].Value
+            $accepted = [double]$match.Groups['accepted'].Value
+            $carouselTimeouts = [double]$match.Groups['carouselTimeouts'].Value
+            $confirmationTimeouts = [double]$match.Groups['confirmationTimeouts'].Value
+            $finalTextTimeouts = [double]$match.Groups['finalTextTimeouts'].Value
+            $lateAccepted = [double]$match.Groups['lateAccepted'].Value
+            $actualReqPerSec = $attempts / [Math]::Max($DurationSeconds, 1)
+            $cycleCompletionRate = if ($started -gt 0) { ($completed / $started) * 100 } else { 0 }
+            $webhookFailureRate = if ($attempts -gt 0) { ($failures / $attempts) * 100 } else { 0 }
+            $carouselReceiveRate = if ($started -gt 0) { ($carousels / $started) * 100 } else { 0 }
+            $confirmationReceiveRate = if ($carousels -gt 0) { ($confirmations / $carousels) * 100 } else { 0 }
+            $acceptedFromConfirmationRate = if ($confirmations -gt 0) { ($accepted / $confirmations) * 100 } else { 0 }
+            $dominantStageTimeout = 'None'
+            $dominantStageTimeoutCount = 0
+            foreach ($candidate in @(
+                @{ Name = 'Carousel'; Count = $carouselTimeouts },
+                @{ Name = 'Confirmation'; Count = $confirmationTimeouts },
+                @{ Name = 'FinalText'; Count = $finalTextTimeouts }
+            )) {
+                if ($candidate.Count -gt $dominantStageTimeoutCount) {
+                    $dominantStageTimeout = $candidate.Name
+                    $dominantStageTimeoutCount = $candidate.Count
+                }
+            }
+            $monitorWarningCount = ([regex]::Matches($simLogContent, 'Worker metrics refresh warning')).Count
+
+            $summaryObject = [pscustomobject]@{
+                Users = $Users
+                Workers = $Workers
+                DurationSeconds = $DurationSeconds
+                StartupJitterSeconds = $StartupJitterSeconds
+                MinThinkMilliseconds = $MinThinkMilliseconds
+                MaxThinkMilliseconds = $MaxThinkMilliseconds
+                OutboundWaitSeconds = $OutboundWaitSeconds
+                CyclesStarted = [int]$started
+                CyclesCompleted = [int]$completed
+                CyclesFailed = [int]$match.Groups['failed'].Value
+                WebhookAttempts = [int]$attempts
+                WebhookSuccesses = [int]$match.Groups['successes'].Value
+                WebhookFailures = [int]$failures
+                OutboundMessagesReceived = [int]$match.Groups['outbound'].Value
+                CarouselsReceived = [int]$carousels
+                ConfirmationsReceived = [int]$confirmations
+                AcceptedTextsReceived = [int]$accepted
+                CarouselTimeouts = [int]$carouselTimeouts
+                ConfirmationTimeouts = [int]$confirmationTimeouts
+                FinalTextTimeouts = [int]$finalTextTimeouts
+                LateAcceptedTexts = [int]$lateAccepted
+                UnexpectedOutboundShapes = [int]$match.Groups['unexpected'].Value
+                AverageCompletedCycleMs = [double]$match.Groups['avg'].Value
+                ActualReqPerSec = [math]::Round($actualReqPerSec, 2)
+                CycleCompletionRatePercent = [math]::Round($cycleCompletionRate, 2)
+                WebhookFailureRatePercent = [math]::Round($webhookFailureRate, 2)
+                CarouselReceiveRatePercent = [math]::Round($carouselReceiveRate, 2)
+                ConfirmationReceiveRatePercent = [math]::Round($confirmationReceiveRate, 2)
+                AcceptedFromConfirmationRatePercent = [math]::Round($acceptedFromConfirmationRate, 2)
+                DominantStageTimeout = $dominantStageTimeout
+                MonitorWarningCount = $monitorWarningCount
+            }
+            $summaryObject | ConvertTo-Json -Depth 5 | Set-Content -Path $headlessSummaryJson -Encoding UTF8
+
             $lines.Add('Final snapshot')
             $lines.Add('--------------')
             $lines.Add("CyclesStarted: $($match.Groups['started'].Value)")
@@ -325,10 +387,23 @@ function Write-RunSummary {
             $lines.Add("WebhookSuccesses: $($match.Groups['successes'].Value)")
             $lines.Add("WebhookFailures: $($match.Groups['failures'].Value)")
             $lines.Add("OutboundMessagesReceived: $($match.Groups['outbound'].Value)")
+            $lines.Add("CarouselsReceived: $($match.Groups['carousels'].Value)")
+            $lines.Add("ConfirmationsReceived: $($match.Groups['confirmations'].Value)")
             $lines.Add("AcceptedTextsReceived: $($match.Groups['accepted'].Value)")
+            $lines.Add("CarouselTimeouts: $($match.Groups['carouselTimeouts'].Value)")
+            $lines.Add("ConfirmationTimeouts: $($match.Groups['confirmationTimeouts'].Value)")
+            $lines.Add("FinalTextTimeouts: $($match.Groups['finalTextTimeouts'].Value)")
+            $lines.Add("LateAcceptedTexts: $($match.Groups['lateAccepted'].Value)")
             $lines.Add("UnexpectedOutboundShapes: $($match.Groups['unexpected'].Value)")
             $lines.Add("AverageCompletedCycleMs: $($match.Groups['avg'].Value)")
-            $lines.Add(("ActualReqPerSec: {0:N2}" -f ($attempts / [Math]::Max($DurationSeconds, 1))))
+            $lines.Add(("ActualReqPerSec: {0:N2}" -f $actualReqPerSec))
+            $lines.Add(("CycleCompletionRatePercent: {0:N2}" -f $cycleCompletionRate))
+            $lines.Add(("WebhookFailureRatePercent: {0:N2}" -f $webhookFailureRate))
+            $lines.Add(("CarouselReceiveRatePercent: {0:N2}" -f $carouselReceiveRate))
+            $lines.Add(("ConfirmationReceiveRatePercent: {0:N2}" -f $confirmationReceiveRate))
+            $lines.Add(("AcceptedFromConfirmationRatePercent: {0:N2}" -f $acceptedFromConfirmationRate))
+            $lines.Add("DominantStageTimeout: $dominantStageTimeout")
+            $lines.Add("MonitorWarningCount: $monitorWarningCount")
             $lines.Add('')
         }
 
@@ -343,6 +418,7 @@ function Write-RunSummary {
         $lines.Add("DbSummary: $dbSummaryJson")
         $lines.Add("ApiLog: $apiLog")
         $lines.Add("ApiErrLog: $apiErrLog")
+        $lines.Add("HeadlessSummaryJson: $headlessSummaryJson")
         $lines.Add("SimulatorLog: $simLog")
 
         [System.IO.File]::WriteAllLines($summaryTxt, $lines, [System.Text.Encoding]::UTF8)
@@ -391,6 +467,28 @@ try {
         'DOTNET_CLI_HOME' = $dotnetCliHome
         'DOTNET_SKIP_FIRST_TIME_EXPERIENCE' = '1'
         'DOTNET_NOLOGO' = '1'
+        'MetaWebhook__VerifyToken' = 'simulator-verify-token-2026'
+        'VotingWorkflow__PayloadSignatureSecret' = 'simulator-payload-secret-2026'
+        'DataErasure__ConfirmationPayloadSecret' = 'simulator-erasure-secret-2026'
+        'RabbitMq__HostName' = '127.0.0.1'
+        'RabbitMq__Port' = '5672'
+        'RabbitMq__VirtualHost' = '/'
+        'RabbitMq__UserName' = $rabbitUser
+        'RabbitMq__Password' = $rabbitPassword
+        'Redis__ConnectionString' = '127.0.0.1:6380,abortConnect=false'
+        'SqlStorage__ConnectionString' = $sqlConnectionString
+        'AdminPortal__Username' = 'admin'
+        'AdminPortal__Password' = 'simulator-admin-pass-2026'
+        'DevLogViewer__Enabled' = 'false'
+        'LocalWorkerControl__WorkerExecutablePath' = $workerExe
+        'LocalWorkerControl__WorkerEnvironmentName' = 'Simulator'
+        'MetaMessenger__GraphApiBaseUrl' = 'http://127.0.0.1:5277'
+        'MetaMessenger__UseFakeMetaStoreClient' = 'true'
+        'MetaWebhook__RequireSignatureValidation' = 'false'
+        'MessengerContent__ForgetMeTokens__0' = 'forget me'
+        'VotingWorkflow__VoteStartTokens__0' = 'GET_STARTED'
+        'VotingWorkflow__VoteStartTokens__1' = 'get_started'
+        'VotingWorkflow__VoteStartTokens__2' = 'დაწყება'
     }
 
     $apiHandle = Start-LoggedProcess -FileName $apiExe -Arguments "--urls http://127.0.0.1:5277 --contentRoot `"$apiContentRoot`"" -WorkingDirectory (Split-Path $apiExe -Parent) -Environment $commonEnvironment -StdOutPath $apiLog -StdErrPath $apiErrLog
@@ -412,6 +510,7 @@ try {
     }
 
     Wait-ForApiHealth
+    Set-VotingGateActive
     Wait-ForWorkerConsumers -ExpectedConsumers $Workers
     Start-Sleep -Seconds 3
 
@@ -421,6 +520,7 @@ try {
         Start-Sleep -Seconds 2
         Reset-State
         Purge-Queues
+        Set-VotingGateActive
         Start-Sleep -Seconds 1
     }
 
@@ -455,6 +555,13 @@ finally {
     Write-Host "  Metrics json : $metricsJson"
     Write-Host "  Queues json  : $queuesJson"
     Write-Host "  DB summary   : $dbSummaryJson"
+    Write-Host "  Headless sum : $headlessSummaryJson"
 }
 
 exit $simExitCode
+
+
+
+
+
+

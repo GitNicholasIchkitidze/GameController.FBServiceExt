@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text;
 
 namespace GameController.FBServiceExt.FakeFBForSimulate;
@@ -86,11 +86,51 @@ internal sealed class ManagedWorkerProcessManager : IAsyncDisposable
         await StopAllAsync().ConfigureAwait(false);
     }
 
+    internal static string ResolveWorkerExecutablePath(SimulatorDefaults defaults)
+    {
+        if (!string.IsNullOrWhiteSpace(defaults.ManagedWorkerExecutablePath))
+        {
+            if (!File.Exists(defaults.ManagedWorkerExecutablePath))
+            {
+                throw new FileNotFoundException("Configured managed worker executable was not found.", defaults.ManagedWorkerExecutablePath);
+            }
+
+            return defaults.ManagedWorkerExecutablePath;
+        }
+
+        var runtimeDirectory = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        var configurationName = runtimeDirectory.Parent?.Name;
+        var srcDirectory = FindAncestor(runtimeDirectory, "src");
+
+        if (srcDirectory is null || string.IsNullOrWhiteSpace(configurationName))
+        {
+            throw new InvalidOperationException("Managed worker executable path could not be derived. Configure Simulator:ManagedWorkerExecutablePath.");
+        }
+
+        var candidates = new[]
+        {
+            Path.Combine(srcDirectory.FullName, "GameController.FBServiceExt.Worker", "bin", configurationName, "net8.0", "GameController.FBServiceExt.Worker.exe"),
+            Path.Combine(srcDirectory.FullName, "GameController.FBServiceExt.Worker", "bin", "Debug", "net8.0", "GameController.FBServiceExt.Worker.exe"),
+            Path.Combine(srcDirectory.FullName, "GameController.FBServiceExt.Worker", "bin", "Release", "net8.0", "GameController.FBServiceExt.Worker.exe")
+        };
+
+        var resolvedPath = candidates.FirstOrDefault(File.Exists);
+        if (resolvedPath is null)
+        {
+            throw new FileNotFoundException(
+                $"Derived managed worker executable was not found. Looked in:{Environment.NewLine}{string.Join(Environment.NewLine, candidates)}",
+                candidates[0]);
+        }
+
+        return resolvedPath;
+    }
+
     private async Task<ManagedWorkerProcess> StartProcessAsync(int slot, CancellationToken cancellationToken)
     {
-        var executablePath = ResolveWorkerExecutablePath();
+        var executablePath = ResolveWorkerExecutablePath(_defaults);
         var workingDirectory = Path.GetDirectoryName(executablePath)
             ?? throw new InvalidOperationException("Worker executable directory could not be resolved.");
+        var environmentName = SimulatorManagedWorkerContract.ResolveEffectiveEnvironmentName(_defaults.ManagedWorkerEnvironmentName);
 
         var startInfo = new ProcessStartInfo(executablePath)
         {
@@ -102,9 +142,11 @@ internal sealed class ManagedWorkerProcessManager : IAsyncDisposable
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8
         };
-        startInfo.Environment["DOTNET_ENVIRONMENT"] = _defaults.ManagedWorkerEnvironmentName;
-        startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = _defaults.ManagedWorkerEnvironmentName;
+        startInfo.Environment["DOTNET_ENVIRONMENT"] = environmentName;
+        startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = environmentName;
         startInfo.Environment["FB_SIM_MANAGED_WORKER_SLOT"] = slot.ToString();
+
+        _log($"Managed worker slot {slot} starting. Environment={environmentName}, Executable={executablePath}");
 
         var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Managed worker process could not be started.");
@@ -121,8 +163,8 @@ internal sealed class ManagedWorkerProcessManager : IAsyncDisposable
             throw new InvalidOperationException($"Managed worker slot {slot} exited immediately with code {TryGetExitCode(process)}.");
         }
 
-        _log($"Managed worker slot {slot} started. PID={process.Id}");
-        return new ManagedWorkerProcess(slot, process, DateTimeOffset.UtcNow, executablePath);
+        _log($"Managed worker slot {slot} started. PID={process.Id}, Environment={environmentName}");
+        return new ManagedWorkerProcess(slot, process, DateTimeOffset.UtcNow, executablePath, environmentName);
     }
 
     private void RegisterProcessLogging(int slot, Process process)
@@ -162,45 +204,6 @@ internal sealed class ManagedWorkerProcessManager : IAsyncDisposable
         {
             process.Process.Dispose();
         }
-    }
-
-    private string ResolveWorkerExecutablePath()
-    {
-        if (!string.IsNullOrWhiteSpace(_defaults.ManagedWorkerExecutablePath))
-        {
-            if (!File.Exists(_defaults.ManagedWorkerExecutablePath))
-            {
-                throw new FileNotFoundException("Configured managed worker executable was not found.", _defaults.ManagedWorkerExecutablePath);
-            }
-
-            return _defaults.ManagedWorkerExecutablePath;
-        }
-
-        var runtimeDirectory = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-        var configurationName = runtimeDirectory.Parent?.Name;
-        var srcDirectory = FindAncestor(runtimeDirectory, "src");
-
-        if (srcDirectory is null || string.IsNullOrWhiteSpace(configurationName))
-        {
-            throw new InvalidOperationException("Managed worker executable path could not be derived. Configure Simulator:ManagedWorkerExecutablePath.");
-        }
-
-        var candidates = new[]
-        {
-            Path.Combine(srcDirectory.FullName, "GameController.FBServiceExt.Worker", "bin", configurationName, "net8.0", "GameController.FBServiceExt.Worker.exe"),
-            Path.Combine(srcDirectory.FullName, "GameController.FBServiceExt.Worker", "bin", "Debug", "net8.0", "GameController.FBServiceExt.Worker.exe"),
-            Path.Combine(srcDirectory.FullName, "GameController.FBServiceExt.Worker", "bin", "Release", "net8.0", "GameController.FBServiceExt.Worker.exe")
-        };
-
-        var resolvedPath = candidates.FirstOrDefault(File.Exists);
-        if (resolvedPath is null)
-        {
-            throw new FileNotFoundException(
-                $"Derived managed worker executable was not found. Looked in:{Environment.NewLine}{string.Join(Environment.NewLine, candidates)}",
-                candidates[0]);
-        }
-
-        return resolvedPath;
     }
 
     private static DirectoryInfo? FindAncestor(DirectoryInfo? start, string directoryName)
@@ -243,10 +246,10 @@ internal sealed class ManagedWorkerProcessManager : IAsyncDisposable
         }
     }
 
-    private sealed record ManagedWorkerProcess(int Slot, Process Process, DateTimeOffset StartedAtUtc, string ExecutablePath)
+    private sealed record ManagedWorkerProcess(int Slot, Process Process, DateTimeOffset StartedAtUtc, string ExecutablePath, string EnvironmentName)
     {
         public ManagedWorkerProcessSnapshot ToSnapshot()
-            => new(Slot, Process.Id, StartedAtUtc, ExecutablePath, !Process.HasExited);
+            => new(Slot, Process.Id, StartedAtUtc, ExecutablePath, !Process.HasExited, EnvironmentName);
     }
 }
 
@@ -255,4 +258,5 @@ internal sealed record ManagedWorkerProcessSnapshot(
     int ProcessId,
     DateTimeOffset StartedAtUtc,
     string ExecutablePath,
-    bool IsRunning);
+    bool IsRunning,
+    string EnvironmentName);

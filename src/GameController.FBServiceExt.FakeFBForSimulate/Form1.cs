@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
@@ -43,7 +43,7 @@ internal sealed class Form1 : Form
         ["ConfirmationShapeFailures"] = "Confirmation payloads that arrived but did not contain a usable accept button.",
         ["StageUnexpectedTexts"] = "Unexpected text messages received while waiting for a non-text stage payload.",
         ["LateAcceptedTexts"] = "Accepted texts that arrived at the wrong stage and were treated as late/out-of-order.",
-        ["UnexpectedOutboundShapes"] = "Aggregate simulator-side outbound mismatch count retained for compatibility.",
+        ["UnexpectedOutboundShapes"] = "Legacy aggregate retained for compatibility. Prefer CarouselTimeouts, ConfirmationTimeouts, FinalTextTimeouts, and LateAcceptedTexts for diagnosis.",
         ["AverageCompletedCycleMs"] = "Average duration of completed voting cycles in milliseconds."
     };
 
@@ -653,11 +653,18 @@ internal sealed class Form1 : Form
                 throw new InvalidOperationException($"API preflight failed at /dev/admin/api/voting. {preflight.DevAdminVotingDetail}");
             }
 
+            var desiredManagedWorkerCount = (int)_managedWorkerCountInput.Value;
+            if (desiredManagedWorkerCount > 0)
+            {
+                var managedWorkerContract = RequireManagedWorkerContract();
+                AppendLog($"Managed worker contract: Environment={managedWorkerContract.EnvironmentName}, Mode={managedWorkerContract.ResolvedOutboundMode}, Executable={managedWorkerContract.ExecutablePath}");
+            }
+
             AppendLog("Applying managed worker count...");
-            await _managedWorkerManager.EnsureWorkerCountAsync((int)_managedWorkerCountInput.Value).ConfigureAwait(true);
+            await _managedWorkerManager.EnsureWorkerCountAsync(desiredManagedWorkerCount).ConfigureAwait(true);
             await RefreshBackendMetricsAsync(force: true).ConfigureAwait(true);
 
-            AppendLog($"Starting simulation with managed workers={(int)_managedWorkerCountInput.Value}...");
+            AppendLog($"Starting simulation with managed workers={desiredManagedWorkerCount}...");
             await _engine.StartAsync(settings).ConfigureAwait(true);
             RefreshSnapshot();
         }
@@ -778,6 +785,23 @@ internal sealed class Form1 : Form
         }
     }
 
+    private ManagedWorkerContractInfo? TryGetManagedWorkerContract()
+    {
+        try
+        {
+            return SimulatorManagedWorkerContract.Probe(_defaults);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private ManagedWorkerContractInfo RequireManagedWorkerContract()
+    {
+        SimulatorManagedWorkerContract.EnsureFakeMetaCompatible(_defaults, FakeFacebookSimulatorEngine.FakeMetaTransportMode);
+        return SimulatorManagedWorkerContract.Probe(_defaults);
+    }
     private SimulatorRunSettings BuildSettings()
     {
         var minThink = (int)_minThinkMillisecondsInput.Value;
@@ -786,6 +810,8 @@ internal sealed class Form1 : Form
         {
             throw new InvalidOperationException("Max Think (ms) must be greater than or equal to Min Think (ms).");
         }
+
+        var managedWorkerContract = TryGetManagedWorkerContract();
 
         return new SimulatorRunSettings(
             _webhookUrlTextBox.Text.Trim(),
@@ -808,7 +834,10 @@ internal sealed class Form1 : Form
                 _defaults.CooldownTextFragments,
                 _defaults.RejectedTextFragments,
                 _defaults.ExpiredTextFragments,
-                _defaults.InactiveVotingTextFragments));
+                _defaults.InactiveVotingTextFragments),
+            managedWorkerContract?.EnvironmentName ?? SimulatorManagedWorkerContract.ResolveEffectiveEnvironmentName(_defaults.ManagedWorkerEnvironmentName),
+            managedWorkerContract?.ResolvedOutboundMode ?? "Unknown",
+            managedWorkerContract?.ExecutablePath ?? string.Empty);
     }
 
     private void SaveSummaryButtonOnClick(object? sender, EventArgs e)
@@ -899,6 +928,9 @@ internal sealed class Form1 : Form
         builder.AppendLine($"  OutboundWaitSeconds: {summary.Settings.OutboundWaitSeconds}");
         builder.AppendLine($"  FailureBackoffMinSeconds: {summary.Settings.FailureBackoffMinSeconds}");
         builder.AppendLine($"  FailureBackoffMaxSeconds: {summary.Settings.FailureBackoffMaxSeconds}");
+        builder.AppendLine($"  ManagedWorkerEnvironmentName: {summary.Settings.ManagedWorkerEnvironmentName}");
+        builder.AppendLine($"  ManagedWorkerOutboundMode: {summary.Settings.ManagedWorkerOutboundMode}");
+        builder.AppendLine($"  ManagedWorkerExecutablePath: {summary.Settings.ManagedWorkerExecutablePath}");
         builder.AppendLine();
         builder.AppendLine("Snapshot");
         builder.AppendLine($"  Running: {summary.Snapshot.IsRunning}");
@@ -924,7 +956,7 @@ internal sealed class Form1 : Form
         builder.AppendLine("WorkerInstances");
         foreach (var worker in summary.WorkerSnapshots)
         {
-            builder.AppendLine($"  PID={worker.ProcessId}, Managed={worker.IsManaged}, Options={worker.OptionsSent}, Accepted={worker.VotesAccepted}, Raw={worker.RawEnvelopesReceived}, Seen={worker.EventsSeen}, CycleP95={worker.NormalizedCycleP95Milliseconds:N1}, HttpP95={worker.OutboundHttpP95Milliseconds:N1}");
+            builder.AppendLine($"  PID={worker.ProcessId}, Managed={worker.IsManaged}, Environment={worker.EnvironmentName}, Options={worker.OptionsSent}, Accepted={worker.VotesAccepted}, Raw={worker.RawEnvelopesReceived}, Seen={worker.EventsSeen}, CycleP95={worker.NormalizedCycleP95Milliseconds:N1}, HttpP95={worker.OutboundHttpP95Milliseconds:N1}");
         }
 
         return builder.ToString();
@@ -1331,6 +1363,21 @@ internal sealed record SimulatorRunSummary(
     IReadOnlyList<WorkerInstanceLoadSnapshot> WorkerSnapshots,
     IReadOnlyDictionary<string, string> Metrics,
     IReadOnlyList<string> LogLines);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -58,7 +58,13 @@ internal static class HeadlessSimulatorRunner
             $"webhookSuccesses={finalSnapshot.WebhookSuccesses}, " +
             $"webhookFailures={finalSnapshot.WebhookFailures}, " +
             $"outbound={finalSnapshot.OutboundMessagesReceived}, " +
+            $"carousels={finalSnapshot.CarouselsReceived}, " +
+            $"confirmations={finalSnapshot.ConfirmationsReceived}, " +
             $"acceptedTexts={finalSnapshot.AcceptedTextsReceived}, " +
+            $"carouselTimeouts={finalSnapshot.CarouselTimeouts}, " +
+            $"confirmationTimeouts={finalSnapshot.ConfirmationTimeouts}, " +
+            $"finalTextTimeouts={finalSnapshot.FinalTextTimeouts}, " +
+            $"lateAccepted={finalSnapshot.LateAcceptedTexts}, " +
             $"unexpectedShapes={finalSnapshot.UnexpectedOutboundShapes}, " +
             $"averageCompletedCycleMs={finalSnapshot.AverageCompletedCycleMilliseconds:F2}");
 
@@ -73,6 +79,15 @@ internal static class HeadlessSimulatorRunner
         if (maxThink < minThink)
         {
             throw new InvalidOperationException("--max-think-ms must be greater than or equal to --min-think-ms.");
+        }
+
+        ManagedWorkerContractInfo? managedWorkerContract = null;
+        try
+        {
+            managedWorkerContract = SimulatorManagedWorkerContract.Probe(defaults);
+        }
+        catch
+        {
         }
 
         return new SimulatorRunSettings(
@@ -96,7 +111,10 @@ internal static class HeadlessSimulatorRunner
                 defaults.CooldownTextFragments,
                 defaults.RejectedTextFragments,
                 defaults.ExpiredTextFragments,
-                defaults.InactiveVotingTextFragments));
+                defaults.InactiveVotingTextFragments),
+            managedWorkerContract?.EnvironmentName ?? SimulatorManagedWorkerContract.ResolveEffectiveEnvironmentName(defaults.ManagedWorkerEnvironmentName),
+            managedWorkerContract?.ResolvedOutboundMode ?? "Unknown",
+            managedWorkerContract?.ExecutablePath ?? string.Empty);
     }
 
     private static Dictionary<string, string> ParseArgs(IEnumerable<string> args)
@@ -150,5 +168,10 @@ internal static class HeadlessSimulatorRunner
         return fallback;
     }
 }
+
+
+
+
+
 
 

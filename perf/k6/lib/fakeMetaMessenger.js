@@ -1,4 +1,4 @@
-import http from 'k6/http';
+﻿import http from 'k6/http';
 import { sleep } from 'k6';
 
 function buildUrl(baseUrl, path) {
@@ -59,7 +59,7 @@ export function clearFakeMetaMessages(fakeMetaBaseUrl) {
 }
 
 export function listFakeMetaMessages(fakeMetaBaseUrl, recipientId, afterSequence, waitSeconds = 0) {
-    const safeWaitSeconds = Math.max(0, Number(waitSeconds || 0));
+    const safeWaitSeconds = Math.max(0, Math.ceil(Number(waitSeconds || 0)));
     const response = http.get(
         buildUrl(fakeMetaBaseUrl, `/api/recipients/${encodeURIComponent(recipientId)}/messages?afterSequence=${afterSequence}&waitSeconds=${safeWaitSeconds}`),
         {
@@ -172,3 +172,4 @@ export function classifyTextMessage(message, patterns = {}) {
 
     return 'other_text';
 }
+

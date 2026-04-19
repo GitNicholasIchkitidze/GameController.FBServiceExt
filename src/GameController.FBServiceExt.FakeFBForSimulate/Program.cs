@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Text.Json;
 using System.Windows.Forms;
 using Microsoft.Extensions.Configuration;
@@ -99,5 +99,7 @@ internal sealed class SimulatorDefaults
         return configuration.GetSection("Simulator").Get<SimulatorDefaults>() ?? new SimulatorDefaults();
     }
 }
+
+
 
 
